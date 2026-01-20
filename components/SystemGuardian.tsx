@@ -16,8 +16,7 @@ interface State {
  * This is the final safety net. If React crashes, this component catches it
  * and prevents the "White Screen of Death".
  */
-// Explicitly using React.Component ensures typescript correctly picks up the generic Props types including children
-class SystemGuardian extends React.Component<Props, State> {
+class SystemGuardian extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null

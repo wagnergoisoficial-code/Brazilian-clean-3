@@ -1,11 +1,6 @@
 
-// BRAZILIAN CLEAN - DEPLOYMENT GUARD
-// ==================================
-// This script runs inside the CI/CD pipeline.
-// It acts as the final gatekeeper before code reaches the public.
-
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 console.log('\n[DEPLOY GUARD] 🛡️  Initiating Deployment Safety Protocol...');
 
@@ -13,6 +8,7 @@ console.log('\n[DEPLOY GUARD] 🛡️  Initiating Deployment Safety Protocol...'
 const BUILD_DIRS = ['dist', 'build'];
 let buildDir = null;
 
+// process.cwd() works in ESM, so no need for __dirname shim here
 for (const dir of BUILD_DIRS) {
   const fullPath = path.join(process.cwd(), dir);
   if (fs.existsSync(fullPath)) {
