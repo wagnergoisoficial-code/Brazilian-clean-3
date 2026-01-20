@@ -699,7 +699,7 @@ const AdminDashboard: React.FC = () => {
                              <h3 className="font-bold text-gray-900 mb-4">Launch Bonus Campaign</h3>
                              <form onSubmit={handleCreateCampaign} className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Campaign Title (PT-BR)</label>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Campaign Title (PT-BR)</label>
                                     <input 
                                         type="text" 
                                         className="w-full border p-2 rounded text-sm"
@@ -709,7 +709,7 @@ const AdminDashboard: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Description</label>
                                     <textarea 
                                         className="w-full border p-2 rounded text-sm"
                                         rows={3}
@@ -720,7 +720,7 @@ const AdminDashboard: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Points Reward</label>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Points Reward</label>
                                         <input 
                                             type="number" 
                                             className="w-full border p-2 rounded text-sm"
@@ -729,7 +729,7 @@ const AdminDashboard: React.FC = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Type</label>
                                         <select 
                                             className="w-full border p-2 rounded text-sm"
                                             value={newCampaign.type}
