@@ -8,9 +8,9 @@
 [build]
   # The Build Guard Command
   # 1. Runs the standard build
-  # 2. Runs the DEPLOY GUARD script to validate integrity
+  # 2. Runs the DEPLOY GUARD script (.cjs version) to validate integrity
   # 3. Only if Guard passes, deployment proceeds
-  command = "npm run build && node scripts/deploy-guard.js"
+  command = "npm run build && node scripts/deploy-guard.cjs"
   
   # Standard Vite/React output directory
   publish = "dist"
