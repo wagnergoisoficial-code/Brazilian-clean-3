@@ -17,8 +17,9 @@
 
 # PRODUCTION CONTEXT
 # Strict environment locking
+# Update: Set NPM_CONFIG_PRODUCTION to false to ensure devDependencies (Vite) are installed for the build.
 [context.production]
-  environment = { NODE_ENV = "production" }
+  environment = { NODE_ENV = "production", NPM_CONFIG_PRODUCTION = "false" }
 
 # PREVIEW CONTEXT
 # For testing branches without affecting live users
