@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { CleanerStatus, SupportStatus, SupportType, SubscriptionPlan, Discount, DiscountType, BonusCampaign, CleanerLevel } from '../types';
@@ -429,7 +428,7 @@ const AdminDashboard: React.FC = () => {
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                                     <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                        If Pending Approvals > 5
+                                        If Pending Approvals &gt; 5
                                     </h4>
                                     <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 ml-1">
                                         <li>Immediately go to <strong>"Cleaners & Verification"</strong> tab.</li>
@@ -442,7 +441,7 @@ const AdminDashboard: React.FC = () => {
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                                     <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                                        If Support Tickets > 24h Old
+                                        If Support Tickets &gt; 24h Old
                                     </h4>
                                     <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 ml-1">
                                         <li>Go to <strong>"Support Center"</strong>.</li>
