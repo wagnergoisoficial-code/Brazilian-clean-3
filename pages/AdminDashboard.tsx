@@ -53,7 +53,7 @@ const AdminDashboard: React.FC = () => {
       reason: ''
   });
 
-  // Checklist State (Persisted in Session for convenience)
+  // Checklist State
   const [dailyChecklist, setDailyChecklist] = useState({
       approvals: false,
       support: false,
@@ -97,11 +97,11 @@ const AdminDashboard: React.FC = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (accessCode === 'admin123') {
-      setIsLoading(true); // Start loading on login
+      setIsLoading(true);
       setTimeout(() => {
         setAccessGranted(true);
         setError('');
-        setIsLoading(false); // End loading
+        setIsLoading(false);
       }, 800);
     } else {
       setError('Access Denied: Invalid Security Code');
@@ -114,7 +114,7 @@ const AdminDashboard: React.FC = () => {
     setActiveView(view);
     setTimeout(() => {
         setIsLoading(false);
-    }, 500); // Simulate fetch delay when switching tabs
+    }, 500);
   };
 
   const handleCreatePost = (e: React.FormEvent) => {
@@ -154,7 +154,6 @@ const AdminDashboard: React.FC = () => {
       }
   };
 
-  // --- DISCOUNT MODAL LOGIC ---
   const openDiscountModal = (cleanerId: string) => {
       setDiscountModal({ isOpen: true, cleanerId });
       setDiscountForm({ type: DiscountType.PERCENTAGE, value: 0, description: '', monthsDuration: 1 });
@@ -179,7 +178,6 @@ const AdminDashboard: React.FC = () => {
       alert("Discount applied successfully.");
   };
 
-  // --- MERIT MODAL LOGIC ---
   const openMeritModal = (cleanerId: string) => {
       setMeritModal({ isOpen: true, cleanerId });
       setMeritForm({ amount: 10, reason: '' });
@@ -191,7 +189,6 @@ const AdminDashboard: React.FC = () => {
       closeMeritModal();
   };
 
-  // --- ANALYTICS CALCULATION ---
   const verifiedCleaners = cleaners.filter(c => c.status === CleanerStatus.VERIFIED);
   const bronzeCount = verifiedCleaners.filter(c => c.level === CleanerLevel.BRONZE).length;
   const silverCount = verifiedCleaners.filter(c => c.level === CleanerLevel.SILVER).length;
@@ -255,7 +252,6 @@ const AdminDashboard: React.FC = () => {
         </button>
       </div>
 
-      {/* ADMIN NAVIGATION TABS */}
       <div className="flex px-4 mb-8 border-b border-gray-200 overflow-x-auto">
           <button 
             onClick={() => handleViewChange('governance')}
@@ -305,7 +301,6 @@ const AdminDashboard: React.FC = () => {
                         <span>🧭</span> Operational Governance Center
                     </h2>
 
-                    {/* KPI CARDS (HEADS UP DISPLAY) */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         <div className={`bg-white p-5 rounded-xl shadow-sm border ${pendingCleaners.length > 0 ? 'border-red-300 ring-2 ring-red-100' : 'border-green-200'}`}>
                              <p className="text-xs font-bold text-gray-400 uppercase">Pending Approvals</p>
@@ -338,10 +333,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        
-                        {/* LEFT COLUMN: CHECKLISTS */}
                         <div className="space-y-8">
-                            {/* DAILY CHECKLIST */}
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="bg-slate-900 px-6 py-4 flex justify-between items-center">
                                     <h3 className="font-bold text-white flex items-center gap-2">
@@ -385,7 +377,6 @@ const AdminDashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* WEEKLY CHECKLIST */}
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="bg-slate-800 px-6 py-4 flex justify-between items-center">
                                     <h3 className="font-bold text-white flex items-center gap-2">
@@ -415,7 +406,6 @@ const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* RIGHT COLUMN: ACTION GUIDE */}
                         <div className="bg-blue-50 rounded-xl shadow-sm border border-blue-100 p-6">
                             <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -424,7 +414,6 @@ const AdminDashboard: React.FC = () => {
                             <p className="text-sm text-blue-700 mb-6">Use these protocols to make decisions when specific situations arise.</p>
                             
                             <div className="space-y-4">
-                                {/* CARD 1 */}
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                                     <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-red-500 rounded-full"></span>
@@ -437,7 +426,6 @@ const AdminDashboard: React.FC = () => {
                                     </ul>
                                 </div>
 
-                                {/* CARD 2 */}
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                                     <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
@@ -451,7 +439,6 @@ const AdminDashboard: React.FC = () => {
                                     </ul>
                                 </div>
 
-                                {/* CARD 3 */}
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                                     <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
@@ -464,7 +451,6 @@ const AdminDashboard: React.FC = () => {
                                     </ul>
                                 </div>
                                 
-                                {/* CARD 4 */}
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                                     <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
@@ -477,14 +463,12 @@ const AdminDashboard: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             )}
 
             {activeView === 'cleaners' && (
                 <>
-                    {/* SECTION 1: ACTION REQUIRED */}
                     <div className="mb-12 px-4 animate-fade-in-up">
                         <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
                             <span className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></span>
@@ -526,7 +510,6 @@ const AdminDashboard: React.FC = () => {
                         )}
                     </div>
 
-                    {/* SECTION 2: INTERNAL COMMUNICATIONS */}
                     <div className="mb-12 px-4 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
                         <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
                             <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
@@ -534,7 +517,6 @@ const AdminDashboard: React.FC = () => {
                         </h2>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Create Post Form */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-1">
                                 <h3 className="font-bold text-gray-900 mb-4">Create New Post</h3>
                                 <form onSubmit={handleCreatePost} className="space-y-4">
@@ -576,7 +558,6 @@ const AdminDashboard: React.FC = () => {
                                 </form>
                             </div>
 
-                            {/* Existing Posts List */}
                             <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 lg:col-span-2 max-h-[500px] overflow-y-auto">
                                 <h3 className="font-bold text-gray-900 mb-4">Active Posts ({feedPosts.length})</h3>
                                 <div className="space-y-4">
@@ -604,7 +585,6 @@ const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* SECTION 3: MASTER DATABASE */}
                     <div className="px-4 mb-12 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                         <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
                             <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
@@ -715,7 +695,6 @@ const AdminDashboard: React.FC = () => {
                     </h2>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* CREATE CAMPAIGN */}
                         <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                              <h3 className="font-bold text-gray-900 mb-4">Launch Bonus Campaign</h3>
                              <form onSubmit={handleCreateCampaign} className="space-y-4">
@@ -741,7 +720,7 @@ const AdminDashboard: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Points Reward</label>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Points Reward</label>
                                         <input 
                                             type="number" 
                                             className="w-full border p-2 rounded text-sm"
@@ -768,7 +747,6 @@ const AdminDashboard: React.FC = () => {
                              </form>
                         </div>
 
-                        {/* ACTIVE CAMPAIGNS */}
                         <div className="lg:col-span-2 space-y-4">
                              <h3 className="font-bold text-gray-900">Active Campaigns</h3>
                              {bonusCampaigns.map(campaign => (
@@ -869,7 +847,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-            {/* DISCOUNT MODAL */}
             {discountModal.isOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
@@ -942,7 +919,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* MERIT MODAL */}
             {meritModal.isOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden animate-scale-in">
@@ -984,7 +960,6 @@ const AdminDashboard: React.FC = () => {
 
             {activeView === 'support' && (
                 <div className="px-4 animate-fade-in-up">
-                    {/* METRICS */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                             <p className="text-xs font-bold text-gray-500 uppercase">Total Tickets</p>
@@ -1000,7 +975,6 @@ const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* TICKET LIST */}
                     <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
                         <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         Support Tickets
@@ -1114,7 +1088,6 @@ const AdminDashboard: React.FC = () => {
                          </div>
                          <div className="p-8">
                              <div className="grid md:grid-cols-2 gap-8">
-                                 {/* Health Metrics */}
                                  <div className="space-y-6">
                                      <div className="bg-slate-800 p-4 rounded-lg border border-slate-600">
                                          <p className="text-xs font-bold text-slate-400 uppercase mb-2">Operational Status</p>
@@ -1134,7 +1107,6 @@ const AdminDashboard: React.FC = () => {
                                      </div>
                                  </div>
                                  
-                                 {/* Controls */}
                                  <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
                                      <h3 className="font-bold text-white mb-4">Manual Overrides</h3>
                                      <div className="space-y-3">

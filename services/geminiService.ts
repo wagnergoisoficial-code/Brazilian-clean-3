@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { CleanerProfile, UserRole } from "../types";
 
@@ -83,13 +82,7 @@ export const generateBrianResponse = async (
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
-  // CRITICAL: Obtain API key exclusively from process.env.API_KEY
-  if (!process.env.API_KEY) {
-    console.error("Configuration Error: API Key is missing.");
-    return "Configuration Error: System is offline (Missing API Key).";
-  }
-
-  // Always use the correct initialization: new GoogleGenAI({ apiKey: process.env.API_KEY })
+  // Use a chave de API diretamente da variável de ambiente, conforme exigido.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // Contextual Data Calculation
@@ -148,23 +141,20 @@ export const generateBrianResponse = async (
   `;
 
   try {
-    // Map history to the format expected by generateContent
     const contents = history.map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
       parts: [{ text: msg.text }]
     }));
 
-    // Use the CORRECT API method: ai.models.generateContent
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.3, // Low temperature for consistent, objective responses
+        temperature: 0.3,
       }
     });
 
-    // Correct extraction: use response.text (property, not method)
     const text = response.text;
     if (!text) {
         throw new Error("Empty response received from AI model.");
@@ -174,7 +164,6 @@ export const generateBrianResponse = async (
   } catch (error) {
     console.error("Luna AI Service Error:", error);
     
-    // INTELLIGENT FALLBACK (Offline Mode)
     if (userRole === UserRole.CLIENT) {
         return "I am currently calibrating my systems. Please proceed to the support page if you need assistance.";
     } else {
