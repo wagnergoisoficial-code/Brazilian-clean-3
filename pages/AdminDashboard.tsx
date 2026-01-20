@@ -741,7 +741,7 @@ const AdminDashboard: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Points Reward</label>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Points Reward</label>
                                         <input 
                                             type="number" 
                                             className="w-full border p-2 rounded text-sm"
