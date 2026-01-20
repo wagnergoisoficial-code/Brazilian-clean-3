@@ -17,8 +17,8 @@ interface State {
  * This is the final safety net. If React crashes, this component catches it
  * and prevents the "White Screen of Death".
  */
-// FIX: Use Component directly from react import to resolve type recognition issues in some environments
-class SystemGuardian extends Component<Props, State> {
+// Fix: Explicitly extend React.Component to ensure the compiler correctly recognizes the generic props and state properties.
+class SystemGuardian extends React.Component<Props, State> {
   // Ensure the state is correctly typed and initialized
   public state: State = {
     hasError: false,
@@ -52,7 +52,7 @@ class SystemGuardian extends Component<Props, State> {
   };
 
   render() {
-    // FIX: Access children from this.props to satisfy TypeScript's context awareness in this environment
+    // Fix: Accessing children from this.props now that the class correctly extends the React.Component base class.
     const { children } = this.props;
 
     if (this.state.hasError) {
