@@ -18,7 +18,7 @@
     <!-- 
        GUARDIAN SAFETY PATCH:
        Define 'process' globalmente para evitar "ReferenceError: process is not defined"
-       quando o código tenta acessar process.env.API_KEY no navegador.
+       no navegador, garantindo compatibilidade com o acesso a process.env.API_KEY.
     -->
     <script>
       window.process = window.process || { env: { NODE_ENV: 'production' } };
@@ -37,7 +37,7 @@
 </head>
   <body class="bg-teal-50 text-slate-900 font-sans antialiased">
     <div id="root"></div>
-    <!-- PONTO DE ENTRADA CRÍTICO: Carrega a aplicação React -->
+    <!-- O Vite transformará este index.tsx no bundle JS final durante o build -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

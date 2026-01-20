@@ -1,41 +1,22 @@
-
 # BRAZILIAN CLEAN - DEPLOYMENT VAULT
 # ==================================
-# This configuration is IMMUTABLE.
-# It enforces strict safeguards against broken deploys.
-# Do not manually change settings in the Netlify UI.
 
 [build]
-  # The Build Guard Command
-  # 1. Runs the standard build
-  # 2. Runs the DEPLOY GUARD script (.cjs version) to validate integrity
-  # 3. Only if Guard passes, deployment proceeds
+  # Comando de build corrigido para usar o script .cjs seguro
   command = "npm run build && node scripts/deploy-guard.cjs"
-  
-  # Standard Vite/React output directory
   publish = "dist"
 
-# PRODUCTION CONTEXT
-# Strict environment locking
-# Update: Set NPM_CONFIG_PRODUCTION to false to ensure devDependencies (Vite) are installed for the build.
 [context.production]
   environment = { NODE_ENV = "production", NPM_CONFIG_PRODUCTION = "false" }
 
-# PREVIEW CONTEXT
-# For testing branches without affecting live users
 [context.deploy-preview]
   environment = { NODE_ENV = "development" }
 
-# ROUTING GUARD
-# Ensures Single Page Application (SPA) routing works.
-# Prevents "Page Not Found" errors on refresh.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# SECURITY HEADERS GUARD
-# Hardens the browser environment against attacks.
 [[headers]]
   for = "/*"
   [headers.values]

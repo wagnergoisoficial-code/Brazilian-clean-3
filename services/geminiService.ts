@@ -2,11 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { CleanerProfile, UserRole } from "../types";
 
-const API_KEY = process.env.API_KEY || '';
-
-// Initialize GoogleGenAI with the API key
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
 // STATIC KNOWLEDGE BASE - The AI's "Source of Truth" about the app structure
 const PORTAL_KNOWLEDGE = `
 [SYSTEM KNOWLEDGE BASE - BRAZILIAN CLEAN]
@@ -88,10 +83,14 @@ export const generateBrianResponse = async (
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
-  if (!API_KEY) {
+  // CRITICAL: Obtain API key exclusively from process.env.API_KEY
+  if (!process.env.API_KEY) {
     console.error("Configuration Error: API Key is missing.");
     return "Configuration Error: System is offline (Missing API Key).";
   }
+
+  // Always use the correct initialization: new GoogleGenAI({ apiKey: process.env.API_KEY })
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // Contextual Data Calculation
   const verifiedCleaners = cleanerData?.filter(c => c.status === 'VERIFIED') || [];
@@ -157,7 +156,7 @@ export const generateBrianResponse = async (
 
     // Use the CORRECT API method: ai.models.generateContent
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: 'gemini-3-flash-preview',
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
@@ -165,6 +164,7 @@ export const generateBrianResponse = async (
       }
     });
 
+    // Correct extraction: use response.text (property, not method)
     const text = response.text;
     if (!text) {
         throw new Error("Empty response received from AI model.");

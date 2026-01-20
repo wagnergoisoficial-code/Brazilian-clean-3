@@ -1,3 +1,4 @@
+
 import React, { ErrorInfo, ReactNode } from 'react';
 import { restoreFromBackup, factoryReset } from '../services/systemGuardianService';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
@@ -17,6 +18,7 @@ interface State {
  * and prevents the "White Screen of Death".
  */
 class SystemGuardian extends React.Component<Props, State> {
+  // Ensure the state is correctly typed and initialized
   public state: State = {
     hasError: false,
     error: null
@@ -49,6 +51,9 @@ class SystemGuardian extends React.Component<Props, State> {
   };
 
   render() {
+    // FIX: Destructure from this.props to satisfy TypeScript's context awareness in this environment
+    const { children } = this.props;
+
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 font-sans text-white">
@@ -103,7 +108,7 @@ class SystemGuardian extends React.Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return <>{children}</>;
   }
 }
 
