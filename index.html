@@ -17,8 +17,8 @@
     </style>
     <!-- 
        GUARDIAN SAFETY PATCH:
-       Define 'process' globalmente para garantir compatibilidade com o acesso a process.env.API_KEY
-       injetado pelo Vite durante o build de produção.
+       Define 'process' globalmente para garantir que a Luna consiga ler a chave 
+       de inteligência vinda do Netlify.
     -->
     <script>
       window.process = window.process || { env: { NODE_ENV: 'production' } };
@@ -37,7 +37,7 @@
 </head>
   <body class="bg-teal-50 text-slate-900 font-sans antialiased">
     <div id="root"></div>
-    <!-- O Vite transformará este index.tsx no bundle JS final durante o build -->
+    <!-- O sistema carrega tudo a partir daqui -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
