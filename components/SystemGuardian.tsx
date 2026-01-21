@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { restoreFromBackup, factoryReset } from '../services/systemGuardianService';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
@@ -17,8 +17,8 @@ interface State {
  * This is the final safety net. If React crashes, this component catches it
  * and prevents the "White Screen of Death".
  */
-// Fix: Extend Component directly from the named import to ensure TypeScript correctly links props and state.
-class SystemGuardian extends Component<Props, State> {
+// Fix: Use React.Component explicitly to avoid ambiguity and ensure 'this.props' is correctly typed from the base class.
+class SystemGuardian extends React.Component<Props, State> {
   // Ensure the state is correctly typed and initialized
   public state: State = {
     hasError: false,
@@ -52,7 +52,7 @@ class SystemGuardian extends Component<Props, State> {
   };
 
   render(): ReactNode {
-    // Fix: 'props' is inherited from the base Component class; accessing 'children' from 'this.props'.
+    // Fix: Accessing children from this.props which is inherited from React.Component base class.
     const { children } = this.props;
 
     if (this.state.hasError) {
