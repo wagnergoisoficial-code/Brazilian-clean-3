@@ -82,8 +82,12 @@ export const generateBrianResponse = async (
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
-  // A inicialização deve ocorrer aqui para garantir que a chave process.env.API_KEY, 
-  // injetada pelo Vite durante o build, seja utilizada corretamente no bundling local.
+  /**
+   * CRITICAL INITIALIZATION:
+   * A inicialização deve ocorrer dentro do escopo onde a API_KEY é necessária.
+   * Ao usar o bundling local (removendo o importmap), o Vite é capaz de identificar 
+   * 'process.env.API_KEY' e substituí-lo estaticamente pelo valor real durante o build.
+   */
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // Contextual Data Calculation
@@ -149,4 +153,26 @@ export const generateBrianResponse = async (
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents:
+      contents: contents,
+      config: {
+        systemInstruction: systemInstruction,
+        temperature: 0.3,
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+        throw new Error("Empty response received from AI model.");
+    }
+    return text;
+
+  } catch (error) {
+    console.error("Luna AI Service Error:", error);
+    
+    if (userRole === UserRole.CLIENT) {
+        return "I am currently calibrating my systems. Please proceed to the support page if you need assistance.";
+    } else {
+        return "Estou calibrando meus sistemas. Por favor, utilize a página de suporte se precisar de ajuda.";
+    }
+  }
+};
