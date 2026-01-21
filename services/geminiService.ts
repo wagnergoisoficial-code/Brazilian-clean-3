@@ -76,21 +76,23 @@ const PORTAL_KNOWLEDGE = `
    - **If "Payment Required"**: The cleaner is Verified but needs to activate their subscription to see leads.
 `;
 
+/**
+ * generateBrianResponse
+ * 
+ * Este serviço gerencia a comunicação com a Luna (IA do sistema).
+ * A inicialização do GoogleGenAI agora ocorre exclusivamente dentro do escopo da função.
+ * Isso garante que o bundler local (Vite) identifique process.env.API_KEY para substituição.
+ */
 export const generateBrianResponse = async (
   history: { role: string; text: string }[],
   userRole: UserRole,
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
-  /**
-   * CRITICAL INITIALIZATION:
-   * A inicialização deve ocorrer dentro do escopo onde a API_KEY é necessária.
-   * Ao usar o bundling local (removendo o importmap), o Vite é capaz de identificar 
-   * 'process.env.API_KEY' e substituí-lo estaticamente pelo valor real durante o build.
-   */
+  // Inicialização forçando o bundling local para permitir injeção de variável de ambiente.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Contextual Data Calculation
+  // Cálculo de dados contextuais para a IA
   const verifiedCleaners = cleanerData?.filter(c => c.status === 'VERIFIED') || [];
   const pendingCleaners = cleanerData?.filter(c => c.status === 'PENDING') || [];
   

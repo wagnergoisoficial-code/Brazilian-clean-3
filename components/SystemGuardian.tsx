@@ -16,10 +16,8 @@ interface State {
  * This is the final safety net. If React crashes, this component catches it
  * and prevents the "White Screen of Death".
  */
-// Fix: Use the named Component import to ensure TypeScript correctly resolves inherited members like props and state.
 class SystemGuardian extends Component<Props, State> {
-  // Fix: Explicitly declare and initialize state with override to resolve property existence issues.
-  public override state: State = {
+  public state: State = {
     hasError: false,
     error: null
   };
@@ -28,7 +26,7 @@ class SystemGuardian extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[System Guardian] CRITICAL APPLICATION ERROR CAUGHT:", error, errorInfo);
     // In a real scenario, we would send this to a logging service (Sentry, etc)
   }
@@ -50,8 +48,7 @@ class SystemGuardian extends Component<Props, State> {
     }
   };
 
-  override render(): ReactNode {
-    // Fix: Access children from this.props which is correctly inherited from the base Component class.
+  render(): ReactNode {
     const { children } = this.props;
 
     if (this.state.hasError) {
