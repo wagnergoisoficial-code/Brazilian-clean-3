@@ -15,12 +15,9 @@ import ExpressMatch from './pages/ExpressMatch';
 import VerifyEmail from './pages/VerifyEmail';
 import Support from './pages/Support';
 
-import MockEmailService from './services/MockEmailService';
 import { UserRole } from './types';
 
-/* =========================
-   PROTECTED ROUTE
-========================= */
+// 🔐 Protected Route
 const ProtectedRoute: React.FC<{
   children: React.ReactElement;
   allowedRole: UserRole;
@@ -34,43 +31,37 @@ const ProtectedRoute: React.FC<{
   return children;
 };
 
-/* =========================
-   ROUTES
-========================= */
-const AppRoutes: React.FC = () => {
-  return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/search" element={<CleanerSearch />} />
-      <Route path="/join" element={<CleanerRegistration />} />
-      <Route path="/express" element={<ExpressMatch />} />
-      <Route path="/verify" element={<VerifyEmail />} />
-      <Route path="/support" element={<Support />} />
+// 📍 Rotas
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="/search" element={<CleanerSearch />} />
+    <Route path="/join" element={<CleanerRegistration />} />
+    <Route path="/express" element={<ExpressMatch />} />
+    <Route path="/verify" element={<VerifyEmail />} />
+    <Route path="/support" element={<Support />} />
 
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowedRole={UserRole.ADMIN}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+    <Route
+      path="/admin"
+      element={
+        <ProtectedRoute allowedRole={UserRole.ADMIN}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      }
+    />
 
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute allowedRole={UserRole.CLEANER}>
-            <CleanerDashboard />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
-  );
-};
+    <Route
+      path="/dashboard"
+      element={
+        <ProtectedRoute allowedRole={UserRole.CLEANER}>
+          <CleanerDashboard />
+        </ProtectedRoute>
+      }
+    />
+  </Routes>
+);
 
-/* =========================
-   APP ROOT
-========================= */
+// 🚀 App principal
 const App: React.FC = () => {
   return (
     <AppProvider>
@@ -78,9 +69,6 @@ const App: React.FC = () => {
         <div className="min-h-screen bg-teal-50 font-sans text-slate-900">
           <Navbar />
           <AppRoutes />
-
-          {/* Serviços auxiliares */}
-          <MockEmailService />
           <BrianAI />
         </div>
       </Router>
