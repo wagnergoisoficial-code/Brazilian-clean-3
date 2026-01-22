@@ -11,7 +11,8 @@ import ExpressMatch from './pages/ExpressMatch';
 import VerifyEmail from './pages/VerifyEmail';
 import Support from './pages/Support';
 import BrianAI from './components/BrianAI';
-import MockEmailService from './services/MockEmailService
+import MockEmailService from './services/MockEmailService';
+
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
