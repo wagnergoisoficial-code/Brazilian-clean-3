@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext } from  "../src/context/AppContext";
 import { useNavigate } from 'react-router-dom';
 
 const MockEmailService: React.FC = () => {
