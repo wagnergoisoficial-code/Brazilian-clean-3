@@ -6,48 +6,43 @@ const PORTAL_KNOWLEDGE = `
 [SYSTEM KNOWLEDGE BASE - BRAZILIAN CLEAN]
 
 1. NAVIGATION & STRUCTURE
-Navbar: Links to Find a Cleaner, For Cleaners, Dashboard, Admin and Support.
-Home Page (/): ZIP Code search and Express Match.
-Cleaner Search (/search): Browse verified cleaners with filters.
-Registration (/join): 3-step professional onboarding.
-Cleaner Dashboard (/dashboard): Status, billing, stats and leads inbox.
-Support (/support): Client form and Cleaner WhatsApp support.
-Admin Dashboard (/admin): Approvals, support tickets and discounts.
+Navbar links to Find a Cleaner, For Cleaners, Dashboard, Admin and Support.
+Home page has ZIP Code search and Express Match.
+Cleaner Search allows browsing verified cleaners with filters.
+Registration is a 3-step onboarding.
+Cleaner Dashboard shows status, billing and leads.
+Support is available for clients and cleaners.
+Admin Dashboard manages approvals, tickets and discounts.
 
 2. KEY PROCESSES
-Pricing & Subscription:
-American Clients: Free.
-Brazilian Cleaners: Paid subscription.
+Pricing:
+American clients are free.
+Brazilian cleaners pay subscription.
 First 2 months: 180 USD.
 After: 260 USD.
-Payment required to receive leads.
 
 Express Match:
-4-step client wizard.
-Broadcasts leads to verified cleaners by ZIP.
+Clients create service requests.
+Leads are broadcast to verified cleaners.
 
 Verification:
-Manual admin approval.
+Admin approval required.
 
-Support Flow:
-Clients via form.
-Cleaners via WhatsApp.
-
-3. MERIT SYSTEM & LEVELS
+3. MERIT SYSTEM
 Bronze: 0–299
 Silver: 300–699
 Gold: 700+
-Automatic upgrades and downgrades based on points.
+Levels update automatically.
 
 4. TROUBLESHOOTING
 Unverified cleaners are hidden.
 Pending requires admin approval.
-Payment Required blocks leads.
+Payment required blocks leads.
 `;
 
 /**
  * generateBrianResponse
- * This service manages the communication with Luna (the system AI).
+ * Handles communication with Luna (AI)
  */
 export const generateBrianResponse = async (
   history: { role: string; text: string }[],
@@ -56,16 +51,14 @@ export const generateBrianResponse = async (
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
 
-  // ✅ CORRECT FOR VITE + NETLIFY
+  // ✅ FIXED: Correct way to read env variable in Vite + Netlify
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
-    console.warn("VITE_GEMINI_API_KEY not found. Check Netlify Environment Variables.");
-    if (userRole === UserRole.CLIENT) {
-      return "I am currently offline due to a system configuration issue. Please contact support.";
-    } else {
-      return "Estou offline devido a um problema de configuração. Por favor, contate o suporte.";
-    }
+    console.warn("VITE_GEMINI_API_KEY not found. Check Netlify environment variables.");
+    return userRole === UserRole.CLIENT
+      ? "I am currently offline due to a system configuration issue. Please contact support."
+      : "Estou offline devido a um problema de configuração. Por favor, contate o suporte.";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -74,7 +67,6 @@ export const generateBrianResponse = async (
   const pendingCleaners = cleanerData?.filter(c => c.status === "PENDING") || [];
 
   const dynamicContext = `
-[CURRENT LIVE DATA]
 User Role: ${userRole}
 Current Page: ${pageContext}
 Verified Cleaners Available: ${verifiedCleaners.length}
@@ -83,32 +75,24 @@ Total Database: ${cleanerData?.length || 0}
 `;
 
   const systemInstruction = `
-You are LUNA, the Platform Intelligence for Brazilian Clean.
+You are LUNA, the platform intelligence for Brazilian Clean.
 
-Identity:
-Name: Luna.
-Age: 28.
-Gender: Female.
-Persona: Intelligent, objective, professional.
-
-Communication Rules:
+Rules:
 Plain text only.
 No emojis.
 No markdown.
-No lists.
 Professional tone.
 
-Knowledge Base:
+Knowledge:
 ${PORTAL_KNOWLEDGE}
 
 Context:
 ${dynamicContext}
 
 Mission:
-Provide accurate assistance.
-Guide users correctly.
+Provide accurate guidance.
 Explain pricing and merit system when needed.
-Maintain executive assistant persona.
+Maintain professional assistant behavior.
 `;
 
   try {
@@ -127,17 +111,15 @@ Maintain executive assistant persona.
     });
 
     if (!response.text) {
-      throw new Error("Empty response received from AI model.");
+      throw new Error("Empty response from AI model.");
     }
 
     return response.text;
 
   } catch (error) {
-    console.error("Luna AI Service Error:", error);
-    if (userRole === UserRole.CLIENT) {
-      return "I am currently calibrating my systems. Please proceed to the support page if you need assistance.";
-    } else {
-      return "Estou calibrando meus sistemas. Por favor, utilize a página de suporte se precisar de ajuda.";
-    }
+    console.error("Luna AI error:", error);
+    return userRole === UserRole.CLIENT
+      ? "I am currently calibrating my systems. Please proceed to the support page if you need assistance."
+      : "Estou calibrando meus sistemas. Por favor, utilize a página de suporte se precisar de ajuda.";
   }
 };
