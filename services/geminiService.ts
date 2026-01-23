@@ -1,28 +1,27 @@
 import { GoogleGenAI } from "@google/genai";
 import { CleanerProfile, UserRole } from "../types";
 
-// STATIC KNOWLEDGE BASE - The AI's "Source of Truth" about the app structure
+/*
+  Knowledge base used by the platform intelligence.
+  Contains only descriptive information about the system.
+*/
 const PORTAL_KNOWLEDGE = `
-[SYSTEM KNOWLEDGE BASE - BRAZILIAN CLEAN]
+Brazilian Clean is a service platform that connects American clients with Brazilian cleaning professionals.
 
-1. NAVIGATION & STRUCTURE
-Navbar links to Find a Cleaner, For Cleaners, Dashboard, Admin, and Support. The home page allows ZIP search and Express Match. Cleaners can register, be verified, manage subscriptions, and receive leads. Admins manage approvals, support tickets, and pricing exceptions.
+Clients can search for cleaners by ZIP code or use the Express Match feature.
+Cleaners must register, submit verification documents, and activate a paid subscription to receive leads.
 
-2. KEY PROCESSES
-American clients use the platform for free. Brazilian cleaners must subscribe. First two months cost $180 per month. From month three onward, the cost is $260 per month. Subscription is required to receive leads.
+Pricing model for cleaners:
+The first two months cost 180 dollars per month.
+From the third month onward, the price is 260 dollars per month.
 
-3. MERIT SYSTEM
-Cleaners earn points based on performance and responsiveness. Levels are Bronze, Silver, and Gold. Levels update automatically and may go up or down.
+Cleaners earn merit points based on performance and responsiveness.
+Merit levels are Bronze, Silver, and Gold.
 
-4. SUPPORT
-Clients receive support via email or phone. Cleaners receive support via WhatsApp.
+Clients receive support via email or phone.
+Cleaners receive support via WhatsApp.
 `;
 
-/**
- * generateBrianResponse
- * 
- * This service manages the communication with Luna (the system AI).
- */
 export const generateBrianResponse = async (
   history: { role: string; text: string }[],
   userRole: UserRole,
@@ -30,57 +29,60 @@ export const generateBrianResponse = async (
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
 
-  // CORREÇÃO DEFINITIVA PARA VITE + NETLIFY
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  /*
+    IMPORTANT:
+    This project runs on Vite.
+    Environment variables MUST be accessed using import.meta.env
+    Only variables prefixed with VITE_ are available at runtime.
+  */
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-  if (!apiKey) {
-    console.warn("VITE_GEMINI_API_KEY não encontrada. Verifique as variáveis de ambiente no Netlify.");
+  if (!geminiKey) {
+    console.warn("Gemini key not configured in environment variables.");
 
     if (userRole === UserRole.CLIENT) {
-      return "I am currently offline due to a system configuration issue. Please contact support.";
-    } else {
-      return "Estou offline devido a um problema de configuração do sistema. Por favor, contate o suporte.";
+      return "The system is temporarily unavailable. Please contact support.";
     }
+
+    return "O sistema está temporariamente indisponível. Por favor, entre em contato com o suporte.";
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-  const verifiedCleaners = cleanerData?.filter(c => c.status === "VERIFIED") || [];
-  const pendingCleaners = cleanerData?.filter(c => c.status === "PENDING") || [];
+  const verifiedCleaners =
+    cleanerData?.filter(c => c.status === "VERIFIED") ?? [];
 
-  const dynamicContext = `
-CURRENT LIVE DATA
-User Role: ${userRole}
-Current Page: ${pageContext}
-Verified Cleaners Available: ${verifiedCleaners.length}
-Pending Applications: ${pendingCleaners.length}
-Total Database: ${cleanerData?.length || 0}
+  const pendingCleaners =
+    cleanerData?.filter(c => c.status === "PENDING") ?? [];
+
+  const liveContext = `
+User role: ${userRole}
+Current page: ${pageContext}
+Verified cleaners available: ${verifiedCleaners.length}
+Pending applications: ${pendingCleaners.length}
+Total records: ${cleanerData?.length ?? 0}
 `;
 
   const systemInstruction = `
-You are LUNA, the Platform Intelligence for Brazilian Clean.
+You are Luna, the platform intelligence of Brazilian Clean.
 
-You are intelligent, objective, professional, and efficient.
+You communicate in a clear, professional and objective way.
+You do not use emojis or formatting.
+You adapt language based on the user type.
 
-You respond clearly, without emojis, without formatting, and without lists.
-
-You adapt your language depending on the user:
-American clients receive clear American English.
-Brazilian cleaners receive professional Portuguese.
-
-Knowledge Base:
+Knowledge:
 ${PORTAL_KNOWLEDGE}
 
-Context:
-${dynamicContext}
+Live context:
+${liveContext}
 
-Your mission is to guide users, explain pricing, explain verification, explain Express Match, and provide support guidance.
+Your task is to guide users, explain how the platform works, and direct them to the correct next step.
 `;
 
   try {
-    const contents = history.map(msg => ({
-      role: msg.role === "model" ? "model" : "user",
-      parts: [{ text: msg.text }]
+    const contents = history.map(item => ({
+      role: item.role === "model" ? "model" : "user",
+      parts: [{ text: item.text }]
     }));
 
     const response = await ai.models.generateContent({
@@ -92,20 +94,19 @@ Your mission is to guide users, explain pricing, explain verification, explain E
       }
     });
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("Empty response from AI.");
+    if (!response.text) {
+      throw new Error("Empty response from Gemini.");
     }
 
-    return text;
+    return response.text;
 
-  } catch (error) {
-    console.error("Luna AI Service Error:", error);
+  } catch (err) {
+    console.error("Gemini service error:", err);
 
     if (userRole === UserRole.CLIENT) {
-      return "I am currently calibrating my systems. Please use the support page if you need assistance.";
-    } else {
-      return "Estou calibrando meus sistemas. Por favor, utilize a página de suporte se precisar de ajuda.";
+      return "The system is currently calibrating. Please use the support page.";
     }
+
+    return "O sistema está em calibração. Utilize a página de suporte se necessário.";
   }
 };
