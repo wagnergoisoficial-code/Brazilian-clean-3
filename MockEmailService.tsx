@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import } from "../../context/AppContext";
-
+import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 
 const MockEmailService: React.FC = () => {
@@ -58,4 +57,3 @@ const MockEmailService: React.FC = () => {
 };
 
 export default MockEmailService;
-
