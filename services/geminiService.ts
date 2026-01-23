@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import { CleanerProfile, UserRole } from "../types";
 
 const PORTAL_KNOWLEDGE = `
@@ -12,16 +11,6 @@ export const generateBrianResponse = async (
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-
-  if (!apiKey) {
-    console.warn("VITE_GEMINI_API_KEY not found. Check Netlify environment variables.");
-    return userRole === UserRole.CLIENT
-      ? "I am currently offline due to a system configuration issue. Please contact support."
-      : "Estou offline devido a um problema na configuração do sistema. Por favor, contate o suporte.";
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
 
   const verifiedCleaners = cleanerData?.filter(c => c.status === "VERIFIED") || [];
   const pendingCleaners = cleanerData?.filter(c => c.status === "PENDING") || [];
@@ -51,21 +40,32 @@ ${dynamicContext}
       parts: [{ text: msg.text }]
     }));
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.3
-      }
+    const response = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        history: contents,
+        systemInstruction
+      })
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response received from AI model.");
-    return text;
+    if (!response.ok) {
+      throw new Error("Gemini function failed");
+    }
+
+    const data = await response.json();
+
+    if (!data.text) {
+      throw new Error("Empty response from Gemini function");
+    }
+
+    return data.text;
 
   } catch (error) {
-    console.error("Luna AI Service Error:", error);
+    console.error("Luna AI Frontend Error:", error);
+
     return userRole === UserRole.CLIENT
       ? "I am currently calibrating my systems. Please proceed to the support page if you need assistance."
       : "Estou calibrando meus sistemas. Por favor, utilize a página de suporte se precisar de ajuda.";
