@@ -1,9 +1,9 @@
 
-
-import { GoogleGenAI } from "@google/genai";
 import { CleanerProfile, UserRole } from "../types";
 
-// STATIC KNOWLEDGE BASE - The AI's "Source of Truth" about the app structure
+// Note: We removed the @google/genai import and the API Key from here.
+// This file is now safe for the public browser.
+
 const PORTAL_KNOWLEDGE = `
 [SYSTEM KNOWLEDGE BASE - BRAZILIAN CLEAN]
 
@@ -78,33 +78,14 @@ const PORTAL_KNOWLEDGE = `
    - **If "Payment Required"**: The cleaner is Verified but needs to activate their subscription to see leads.
 `;
 
-/**
- * generateBrianResponse
- * 
- * This service manages the communication with Luna (the system AI).
- */
 export const generateBrianResponse = async (
   history: { role: string; text: string }[],
   userRole: UserRole,
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
-  // FIX: Accessing environment variable via import.meta.env for Vite compatibility
-  const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
-
-  if (!apiKey) {
-    // FIX: Updated warning message to reference VITE_GEMINI_API_KEY.
-    console.warn("VITE_GEMINI_API_KEY not found. Please check your .env file or Netlify environment variables.");
-    if (userRole === UserRole.CLIENT) {
-        return "I am currently offline due to a system configuration issue. Please contact support.";
-    } else {
-        return "Estou offline devido a um problema na configuração do sistema. Por favor, contate o suporte.";
-    }
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  // Cálculo de dados contextuais para a IA
+  
+  // Calculate context on client side to keep payload efficient
   const verifiedCleaners = cleanerData?.filter(c => c.status === 'VERIFIED') || [];
   const pendingCleaners = cleanerData?.filter(c => c.status === 'PENDING') || [];
   
@@ -165,20 +146,30 @@ export const generateBrianResponse = async (
       parts: [{ text: msg.text }]
     }));
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.3,
-      }
+    // CRITICAL FIX:
+    // Instead of calling Google SDK directly (which requires the key on the frontend),
+    // we call our own Netlify Function. The key lives securely on the server.
+    const response = await fetch('/.netlify/functions/api', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents,
+        systemInstruction
+      }),
     });
 
-    const text = response.text;
-    if (!text) {
-        throw new Error("Empty response received from AI model.");
+    if (!response.ok) {
+      throw new Error(`Server Error: ${response.status}`);
     }
-    return text;
+
+    const data = await response.json();
+    
+    if (!data.text) {
+        throw new Error("Empty response received from AI service.");
+    }
+    return data.text;
 
   } catch (error) {
     console.error("Luna AI Service Error:", error);
