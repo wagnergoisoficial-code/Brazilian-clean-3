@@ -19,17 +19,9 @@ export const handler = async (event: any) => {
   }
 
   try {
-    // 4. API KEY EXTRACTION
-    // We check both naming conventions to be safe
+    // 4. API KEY EXTRACTION & SAFE MODE CHECK
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("[Backend] Error: API_KEY is missing in Netlify Environment Variables.");
-      return { 
-        statusCode: 500, 
-        headers,
-        body: JSON.stringify({ error: "Configuration Error: API Key missing on server." }) 
-      };
-    }
+    const isOfflineMode = !apiKey;
 
     // 5. INPUT PARSING
     if (!event.body) {
@@ -45,7 +37,44 @@ export const handler = async (event: any) => {
 
     const { contents, systemInstruction } = parsedBody;
 
-    // 6. CONSTRUCT GOOGLE API PAYLOAD (STRICT REST FORMAT)
+    // ---------------------------------------------------------
+    // FALLBACK PROTOCOL: OFFLINE MODE (SIMULATION)
+    // ---------------------------------------------------------
+    if (isOfflineMode) {
+      console.warn("[Backend] API Key missing. Engaging Safe Mode (Simulation).");
+      
+      // Extract the last user message
+      const lastUserMsg = contents
+        .filter((c: any) => c.role === 'user')
+        .pop()
+        ?.parts?.[0]?.text?.toLowerCase() || "";
+
+      let mockResponse = "I am currently operating in Safe Mode (Offline). I can assist with basic navigation.";
+
+      // Simple Keyword Matching for Simulation
+      if (lastUserMsg.includes("hello") || lastUserMsg.includes("hi") || lastUserMsg.includes("ola")) {
+        mockResponse = "Hello. I am Luna (Safe Mode). How can I assist you with Brazilian Clean today?";
+      } else if (lastUserMsg.includes("price") || lastUserMsg.includes("cost") || lastUserMsg.includes("pay")) {
+        mockResponse = "Cleaners pay $180/month for the first 2 months, then $260/month. Clients use the platform for free.";
+      } else if (lastUserMsg.includes("join") || lastUserMsg.includes("register") || lastUserMsg.includes("cadastro")) {
+        mockResponse = "Professionals can register by clicking 'For Cleaners' in the navigation bar.";
+      } else if (lastUserMsg.includes("support") || lastUserMsg.includes("help") || lastUserMsg.includes("ajuda")) {
+        mockResponse = "Please visit our Support page for direct assistance.";
+      } else {
+        mockResponse = "I understand. Since I am in Safe Mode, I recommend checking the Dashboard or Support page for more details.";
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ text: mockResponse })
+      };
+    }
+
+    // ---------------------------------------------------------
+    // LIVE PROTOCOL: GOOGLE GEMINI API
+    // ---------------------------------------------------------
+    
     // IMPORTANT: The REST API uses snake_case (system_instruction), NOT camelCase.
     const MODEL_NAME = 'gemini-3-flash-preview';
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
@@ -68,7 +97,7 @@ export const handler = async (event: any) => {
 
     console.log("[Backend] Sending request to Google Gemini...", { model: MODEL_NAME });
 
-    // 7. EXECUTE REQUEST
+    // EXECUTE REQUEST
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,7 +106,7 @@ export const handler = async (event: any) => {
 
     const data = await response.json();
 
-    // 8. ERROR HANDLING (UPSTREAM)
+    // ERROR HANDLING (UPSTREAM)
     if (!response.ok) {
       console.error("[Backend] Google API Error:", JSON.stringify(data, null, 2));
       const googleError = data.error?.message || data.error?.status || "Unknown Upstream Error";
@@ -88,13 +117,11 @@ export const handler = async (event: any) => {
       };
     }
 
-    // 9. EXTRACT & RETURN
-    // Safety check for deep nesting
+    // EXTRACT & RETURN
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
       console.warn("[Backend] Empty content received.", JSON.stringify(data));
-      // Even if empty, we return 200 to valid parsing, but with a fallback text
       return {
         statusCode: 200,
         headers,
