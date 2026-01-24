@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { restoreFromBackup, factoryReset } from '../services/systemGuardianService';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
@@ -17,13 +17,10 @@ interface State {
  * and prevents the "White Screen of Death".
  */
 class SystemGuardian extends React.Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };

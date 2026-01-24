@@ -141,14 +141,22 @@ export const generateBrianResponse = async (
   `;
 
   try {
-    const contents = history.map(msg => ({
+    // FIX: Filter out the initial greeting message if it comes from the model.
+    // The Gemini API requires the first message to be from the 'user' in many contexts.
+    // The greeting information is implied by the System Instruction.
+    const cleanHistory = history.filter((msg, index) => {
+        // Remove first message if it is from 'model' (The greeting)
+        if (index === 0 && msg.role === 'model') return false;
+        return true;
+    });
+
+    const contents = cleanHistory.map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
       parts: [{ text: msg.text }]
     }));
 
     // CRITICAL FIX:
-    // Instead of calling Google SDK directly (which requires the key on the frontend),
-    // we call our own Netlify Function. The key lives securely on the server.
+    // Calling the Netlify Function (Proxy) instead of direct SDK usage.
     const response = await fetch('/.netlify/functions/api', {
       method: 'POST',
       headers: {
@@ -160,11 +168,13 @@ export const generateBrianResponse = async (
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`Server Error: ${response.status}`);
-    }
-
     const data = await response.json();
+
+    if (!response.ok) {
+      // Log the full server error to console for debugging
+      console.error("AI Service Error Detail:", data);
+      throw new Error(`Server Error ${response.status}: ${data.error || 'Unknown Error'}`);
+    }
     
     if (!data.text) {
         throw new Error("Empty response received from AI service.");

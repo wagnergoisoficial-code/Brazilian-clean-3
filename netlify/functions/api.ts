@@ -1,50 +1,100 @@
-import { GoogleGenAI } from "@google/genai";
 
 export const handler = async (event: any) => {
-  // SECURITY: Only allow POST requests
+  // Common CORS headers to ensure the browser accepts the response
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json"
+  };
+
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "OK" };
+  }
+
+  // SECURITY: Only allow POST requests for the actual payload
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+    return { statusCode: 405, headers, body: "Method Not Allowed" };
   }
 
   try {
-    // SECURITY: The API Key is read here, on the server. 
-    // It is NEVER sent to the client.
-    // Ensure you have a Netlify Environment Variable named "API_KEY" or "GEMINI_API_KEY".
+    // 1. CONFIGURATION CHECK
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-
     if (!apiKey) {
       console.error("Server Error: Missing API Key in Environment Variables");
       return { 
         statusCode: 500, 
-        body: JSON.stringify({ error: "Server Configuration Error" }) 
+        headers,
+        body: JSON.stringify({ error: "Server Configuration Error: Missing API Key" }) 
       };
     }
 
+    // 2. PARSE INPUT
+    if (!event.body) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing request body" }) };
+    }
     const { contents, systemInstruction } = JSON.parse(event.body);
 
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Call Google Gemini
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Updated to the recommended model
+    // 3. CALL GEMINI API (REST)
+    // Using REST API avoids 'node_modules' dependency issues on Netlify Functions
+    const MODEL_NAME = 'gemini-3-flash-preview';
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+
+    const payload = {
       contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.3,
+      // REST API expects systemInstruction to be wrapped in 'parts'
+      systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+      generationConfig: {
+        temperature: 0.3
       }
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
+
+    const data = await response.json();
+
+    // 4. HANDLE API ERRORS
+    if (!response.ok) {
+      console.error("Gemini API Error:", JSON.stringify(data));
+      // Return the actual error from Google if available, or a generic one
+      const errorMessage = data.error?.message || "Unknown AI Service Error";
+      return {
+        statusCode: response.status,
+        headers,
+        body: JSON.stringify({ error: errorMessage })
+      };
+    }
+
+    // 5. EXTRACT CONTENT
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      console.warn("Gemini Response Empty:", JSON.stringify(data));
+      // Fallback if the model returns safety blocks or no text
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ text: "I apologize, but I cannot answer that query right now." })
+      };
+    }
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: response.text })
+      headers,
+      body: JSON.stringify({ text: text })
     };
 
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    console.error("Netlify Function Runtime Error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Failed to generate content" })
+      headers,
+      body: JSON.stringify({ error: "Internal Server Error: " + (error.message || "Unknown") })
     };
   }
 };
