@@ -141,11 +141,10 @@ export const generateBrianResponse = async (
   `;
 
   try {
-    // FIX: Filter out the initial greeting message if it comes from the model.
-    // The Gemini API requires the first message to be from the 'user' in many contexts.
-    // The greeting information is implied by the System Instruction.
+    // 1. Sanitize Chat History
+    // The API requires 'user' to send the first message in the 'contents' array.
+    // We filter out any initial 'model' greeting from the history array.
     const cleanHistory = history.filter((msg, index) => {
-        // Remove first message if it is from 'model' (The greeting)
         if (index === 0 && msg.role === 'model') return false;
         return true;
     });
@@ -155,8 +154,7 @@ export const generateBrianResponse = async (
       parts: [{ text: msg.text }]
     }));
 
-    // CRITICAL FIX:
-    // Calling the Netlify Function (Proxy) instead of direct SDK usage.
+    // 2. Call Netlify Function (Proxy)
     const response = await fetch('/.netlify/functions/api', {
       method: 'POST',
       headers: {
@@ -171,9 +169,10 @@ export const generateBrianResponse = async (
     const data = await response.json();
 
     if (!response.ok) {
-      // Log the full server error to console for debugging
-      console.error("AI Service Error Detail:", data);
-      throw new Error(`Server Error ${response.status}: ${data.error || 'Unknown Error'}`);
+      console.error("Luna AI Error Details:", data);
+      // Return the specific error to the chat interface so we can debug in production
+      // In a real finished product, we would hide this, but for this engineering phase, we need visibility.
+      return `System Error: ${data.error || 'Unknown Server Error'}`;
     }
     
     if (!data.text) {
@@ -181,13 +180,13 @@ export const generateBrianResponse = async (
     }
     return data.text;
 
-  } catch (error) {
-    console.error("Luna AI Service Error:", error);
-    
-    if (userRole === UserRole.CLIENT) {
-        return "I am currently calibrating my systems. Please proceed to the support page if you need assistance.";
-    } else {
-        return "Estou calibrando meus sistemas. Por favor, utilize a página de suporte se precisar de ajuda.";
+  } catch (error: any) {
+    console.error("Luna AI Service Exception:", error);
+    // Only return the fallback calibration message if it's a network/fetch error, 
+    // otherwise the specific error from the block above will be returned.
+    if (error.message && error.message.includes("System Error")) {
+        return error.message; 
     }
+    return "I am currently calibrating my systems. Please check your internet connection or try again later.";
   }
 };
