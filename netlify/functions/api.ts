@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 
 export const handler = async (event: any) => {
   // 1. SET CORS HEADERS (Vital for Web Access)
@@ -20,7 +21,8 @@ export const handler = async (event: any) => {
 
   try {
     // 4. API KEY EXTRACTION & SAFE MODE CHECK
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    
     const isOfflineMode = !apiKey;
 
     // 5. INPUT PARSING
@@ -72,67 +74,25 @@ export const handler = async (event: any) => {
     }
 
     // ---------------------------------------------------------
-    // LIVE PROTOCOL: GOOGLE GEMINI API
+    // LIVE PROTOCOL: GOOGLE GEMINI API (SDK)
     // ---------------------------------------------------------
     
-    // IMPORTANT: The REST API uses snake_case (system_instruction), NOT camelCase.
-    const MODEL_NAME = 'gemini-3-flash-preview';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+    const ai = new GoogleGenAI({ apiKey: apiKey });
 
-    const googlePayload: any = {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
       contents: contents,
-      generation_config: {
+      config: {
+        systemInstruction: systemInstruction,
         temperature: 0.3,
-        // Optional: limit tokens to prevent timeouts
-        max_output_tokens: 500 
+        maxOutputTokens: 500,
       }
-    };
-
-    // Correctly format system_instruction for REST API
-    if (systemInstruction) {
-      googlePayload.system_instruction = {
-        parts: [{ text: systemInstruction }]
-      };
-    }
-
-    console.log("[Backend] Sending request to Google Gemini...", { model: MODEL_NAME });
-
-    // EXECUTE REQUEST
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(googlePayload)
     });
-
-    const data = await response.json();
-
-    // ERROR HANDLING (UPSTREAM)
-    if (!response.ok) {
-      console.error("[Backend] Google API Error:", JSON.stringify(data, null, 2));
-      const googleError = data.error?.message || data.error?.status || "Unknown Upstream Error";
-      return {
-        statusCode: response.status,
-        headers,
-        body: JSON.stringify({ error: `Google AI Error: ${googleError}` })
-      };
-    }
-
-    // EXTRACT & RETURN
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      console.warn("[Backend] Empty content received.", JSON.stringify(data));
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ text: "I processed your request, but I have no response text. (Safety Filter triggered?)" })
-      };
-    }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ text: text })
+      body: JSON.stringify({ text: response.text })
     };
 
   } catch (error: any) {
