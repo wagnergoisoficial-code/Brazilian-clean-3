@@ -6,7 +6,10 @@ import { useAppContext } from '../context/AppContext';
 const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const cleanerId = searchParams.get('id');
-  const token = searchParams.get('token');
+  const type = searchParams.get('type'); // 'client' or undefined (default cleaner)
+  const urlCode = searchParams.get('code');
+  const token = searchParams.get('token'); // Legacy support
+  
   const { verifyCleanerCode, resendCleanerCode, cleaners } = useAppContext();
   const navigate = useNavigate();
   
@@ -15,33 +18,58 @@ const VerifyEmail: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   
   const cleaner = cleaners.find(c => c.id === cleanerId);
+  const isClientFlow = type === 'client';
 
   useEffect(() => {
-    // If we have a legacy token (like from Express Match), just auto-verify
-    if (token && !cleanerId) {
-        setStatus('verifying');
-        setTimeout(() => setStatus('success'), 1500);
+    // If we have a code in URL (e.g. from Mock Email Link), pre-fill it
+    if (urlCode) {
+        setCode(urlCode);
     }
-  }, [token, cleanerId]);
+
+    // If we have a legacy token or auto-code, auto-verify for clients
+    if ((token || urlCode) && isClientFlow) {
+        // Optional: Auto submit if user lands here with code
+    }
+  }, [token, urlCode, isClientFlow]);
 
   const handleSubmitCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cleanerId || code.length !== 6) return;
+    if (code.length !== 6) return;
 
     setStatus('verifying');
+
     setTimeout(() => {
-        const success = verifyCleanerCode(cleanerId, code);
-        if (success) {
-            setStatus('success');
+        if (isClientFlow) {
+            // CLIENT / LEAD VERIFICATION (SIMULATED)
+            // In Studio/Demo mode, we accept the default demo code
+            if (code === '123456' || code === urlCode) {
+                 setStatus('success');
+            } else {
+                 setStatus('error');
+                 setErrorMessage('Invalid verification code. Try 123456 (Demo).');
+            }
         } else {
-            setStatus('error');
-            setErrorMessage('Invalid or expired code. Please check your email or resend a new one.');
+            // CLEANER VERIFICATION
+            if (!cleanerId) {
+                setStatus('error');
+                setErrorMessage('Invalid link. Missing professional ID.');
+                return;
+            }
+            const success = verifyCleanerCode(cleanerId, code);
+            if (success) {
+                setStatus('success');
+            } else {
+                setStatus('error');
+                setErrorMessage('Invalid or expired code. Please check your email or resend a new one.');
+            }
         }
     }, 1200);
   };
 
   const handleResend = () => {
-    if (cleanerId) {
+    if (isClientFlow) {
+        alert('DEMO MODE: Your verification code is 123456');
+    } else if (cleanerId) {
         resendCleanerCode(cleanerId);
         alert('A new 6-digit code has been sent to your email.');
     }
@@ -49,30 +77,37 @@ const VerifyEmail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
-       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in">
+       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
           
+          {/* DEMO MODE RIBBON */}
+          <div className="bg-yellow-100 text-yellow-800 text-xs font-bold py-2 absolute top-0 left-0 right-0 border-b border-yellow-200">
+             STUDIO MODE: CODE IS {urlCode || '123456'}
+          </div>
+
           {status === 'success' ? (
-              <div className="animate-fade-in">
+              <div className="animate-fade-in mt-4">
                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                  </div>
-                 <h2 className="text-3xl font-black text-gray-900 mb-2">Email Verified!</h2>
+                 <h2 className="text-3xl font-black text-gray-900 mb-2">{isClientFlow ? 'Request Confirmed!' : 'Email Verified!'}</h2>
                  <p className="text-gray-600 mb-8 leading-relaxed">
-                    Great! Your account is now active. You can now access your dashboard and complete your professional setup.
+                    {isClientFlow 
+                        ? 'Your request has been broadcasted to our verified cleaners. You will receive offers shortly.' 
+                        : 'Great! Your account is now active. You can now access your dashboard and complete your professional setup.'}
                  </p>
-                 <button onClick={() => navigate('/dashboard')} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition shadow-lg">
-                    Go to Dashboard
+                 <button onClick={() => navigate(isClientFlow ? '/' : '/dashboard')} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition shadow-lg">
+                    {isClientFlow ? 'Return Home' : 'Go to Dashboard'}
                  </button>
               </div>
           ) : (
-              <div className="animate-fade-in">
+              <div className="animate-fade-in mt-4">
                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                  </div>
-                 <h2 className="text-2xl font-black text-gray-900 mb-2">Confirm your Email</h2>
+                 <h2 className="text-2xl font-black text-gray-900 mb-2">Confirm your {isClientFlow ? 'Request' : 'Email'}</h2>
                  <p className="text-gray-500 mb-8 text-sm leading-relaxed">
-                    We sent a 6-digit verification code to <span className="font-bold text-slate-800">{cleaner?.email || 'your email'}</span>. 
-                    Please enter it below to confirm your registration.
+                    We sent a 6-digit verification code to <span className="font-bold text-slate-800">{isClientFlow ? 'your email' : (cleaner?.email || 'your email')}</span>. 
+                    Please enter it below to confirm.
                  </p>
 
                  <form onSubmit={handleSubmitCode} className="space-y-6">
@@ -101,7 +136,7 @@ const VerifyEmail: React.FC = () => {
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                 Verifying...
                             </>
-                        ) : 'Confirm Account'}
+                        ) : 'Confirm Code'}
                     </button>
                  </form>
 

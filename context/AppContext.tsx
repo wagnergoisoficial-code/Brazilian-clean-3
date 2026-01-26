@@ -373,12 +373,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const createLead = (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
+    const verificationCode = '123456'; // FIXED DEMO CODE
+    
     setLeads(p => [{...l, id, status: 'OPEN', createdAt: Date.now()} as Lead, ...p]);
+    
+    // Explicitly include the code in the demo email body and link
     setLastEmail({
         to: l.clientEmail || '',
         subject: 'Confirme seu pedido Brazilian Clean',
-        body: `Olá ${l.clientName}, recebemos seu pedido. Verifique os dados e clique para autorizar o broadcast.`,
-        actionLink: '/verify',
+        body: `Olá ${l.clientName}, recebemos seu pedido. Seu código de verificação é ${verificationCode}. Clique abaixo para autorizar.`,
+        actionLink: `/verify?type=client&code=${verificationCode}`,
         actionText: 'Autorizar Pedido'
     });
   };

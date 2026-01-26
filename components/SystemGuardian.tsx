@@ -14,7 +14,8 @@ interface State {
  * SystemGuardian component provides a safety layer to catch UI errors.
  */
 class SystemGuardian extends React.Component<Props, State> {
-  public state: State = {
+  // Initialize state as class property to ensure type safety
+  state: State = {
     hasError: false,
     error: null
   };

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -239,8 +240,8 @@ const ExpressMatch: React.FC = () => {
                </div>
                <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Request Received!</h2>
                <p className="text-lg text-gray-600 mb-8">
-                 We've sent a verification email to <strong>{formData.clientEmail}</strong>.
-                 <br/>Please click the link in the email to broadcast your request.
+                 We've sent a simulated email to <strong>{formData.clientEmail}</strong>.
+                 <br/><span className="text-sm bg-yellow-100 px-2 py-1 rounded text-yellow-800 font-bold">DEMO MODE: Check the top-right notification or simply verify on the next screen.</span>
                </p>
                <button onClick={() => navigate('/')} className="bg-slate-900 text-white px-8 py-3 rounded-full font-bold hover:bg-slate-800 transition">
                  Return Home
