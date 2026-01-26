@@ -1,82 +1,126 @@
+import { CleanerProfile, UserRole, AiVerificationResult } from "../types";
+import { SYSTEM_IDENTITY } from "../config/SystemManifest";
 
-import { CleanerProfile, UserRole } from "../types";
+// --- RELIABILITY ARCHITECTURE ---
+const CIRCUIT_BREAKER = {
+  failures: 0,
+  threshold: 3,
+  isOpen: false,
+  lastFailure: 0,
+  resetTime: 60000 // 60 seconds cooldown
+};
 
-// Note: We removed the @google/genai import and the API Key from here.
-// This file is now safe for the public browser.
+// --- LUNA PERSONA & KNOWLEDGE BASE ---
+const LUNA_IDENTITY = {
+    NAME: "Luna",
+    ROLE: "Assistant",
+    TONE: "Warm, Professional, Clear, Charismatic",
+    EMOJIS: ["✨", "😊", "👋", "🚀", "💎", "✅"]
+};
 
-const PORTAL_KNOWLEDGE = `
-[SYSTEM KNOWLEDGE BASE - BRAZILIAN CLEAN]
+// Deterministic Language Detection (Local/Offline)
+const detectLanguage = (text: string): 'pt' | 'en' => {
+    const t = text.toLowerCase();
+    // Scoring system to determine intent
+    const ptKeywords = [
+        'oi', 'ola', 'olá', 'bom', 'boa', 'tudo', 'bem', 'ajuda', 'por favor', 'obrigado', 'obrigada',
+        'limpeza', 'faxina', 'preço', 'quanto', 'custa', 'pagamento', 'lead', 'cliente', 'verificação',
+        'foto', 'documento', 'suporte', 'erro', 'não', 'sim', 'que', 'de', 'em', 'para', 'com', 'br', 'brasil',
+        'como', 'funciona', 'fazer', 'posso', 'sou', 'quero', 'preciso', 'antes', 'depois', 'portfolio'
+    ];
+    const enKeywords = [
+        'hi', 'hello', 'hey', 'good', 'morning', 'afternoon', 'help', 'please', 'thanks',
+        'clean', 'cleaning', 'price', 'cost', 'pay', 'payment', 'lead', 'client', 'verify',
+        'photo', 'id', 'support', 'error', 'no', 'yes', 'what', 'of', 'in', 'to', 'with', 'us', 'usa',
+        'how', 'works', 'do', 'can', 'i', 'want', 'need', 'am', 'before', 'after', 'portfolio'
+    ];
 
-1. **NAVIGATION & STRUCTURE**
-   - **Navbar**: Links to "Find a Cleaner" (Home), "For Cleaners" (Join), "Dashboard" (Cleaner), "Admin" (Admin), "Support" (Help). Features a Role Switcher for demo purposes.
-   - **Home Page (/)**: Hero section with ZIP Code search. "Express Match" button (for fast lead broadcast). Trust indicators (Verified IDs, Background Checked).
-   - **Cleaner Search (/search?zip=...)**: 
-     - **Browsing**: Clients can browse verified cleaners in their ZIP code.
-     - **Filters**: Results can be filtered by **Service Type** (e.g., Deep Clean, Standard), **Experience** (Years), and **Rating**.
-     - **Cleaner Card**: Shows Photo, Name, Company, Rating, Services, and Verified Badge.
-     - **Actions**: "Call Now" (tel link), "Message" (sms link).
-   - **Registration (/join)**: For professionals. 3 Steps:
-     1. Personal: Name, Contact, Location.
-     2. Business: Company vs Individual, Experience, Services, ZIPs.
-     3. Verification: Upload ID, Selfie (Simulated).
-   - **Cleaner Dashboard (/dashboard)**:
-     - Shows Status: "Em Análise" (Pending) or "Conta Verificada" (Active).
-     - **Billing Status**: Cleaners must pay a subscription to receive leads.
-     - Stats: Rating, Leads count.
-     - **Leads Inbox**: Real-time list of "Express Match" opportunities in their ZIP code.
-   - **Support (/support)**:
-     - **American Clients**: Submit a form. Our team responds within 24 hours.
-     - **Brazilian Cleaners**: Submit a form with WhatsApp number. Our team contacts them via WhatsApp.
-   - **Admin Dashboard (/admin)**:
-     - **RESTRICTED AREA**: This section is password protected (Mock Code: admin123).
-     - **Master Database**: Once unlocked, Admins can view a table of ALL "House Cleans" (cleaners), including contact info, status, and join date.
-     - **Approvals**: Admins process "Pending" applications here.
-     - **Support Center**: Admins view and resolve support tickets.
-     - **Discount Management**: Admins can apply discounts or full payment exemptions to Cleaners.
+    let ptScore = 0;
+    let enScore = 0;
 
-2. **KEY PROCESSES**
-   - **Pricing & Subscription (Cleaners Only)**:
-     - **American Clients**: Free to use.
-     - **Brazilian Cleaners**: Must pay to access the platform.
-     - **First 2 Months**: Promotional rate of **$180 USD/month**.
-     - **Month 3 Onwards**: Standard rate of **$260 USD/month**.
-     - **Access**: Subscription is required to appear in search results and accept Express Match leads.
-     - **Payment Methods**: Credit Card, Debit Card, Stripe, PayPal.
-     - **Discounts/Exemptions**: Admins can grant special pricing (e.g., first month free, hardship exemption). This appears on the dashboard.
-   
-   - **Express Match (Service-Based Model)**:
-     - Located at ** /express **.
-     - **Workflow**: A 4-Step Wizard for Clients.
-       1. **Service**: Client selects type (Standard, Deep, Move-in/out, Post-Construction) & Home Size (Beds/Baths).
-       2. **Logistics**: ZIP Code & Preferred Date.
-       3. **Contact**: Client Name & Phone.
-       4. **Broadcast**: System creates a "LEAD" and alerts all Verified Cleaners in that ZIP.
-     - **Cleaner Action**: Cleaners see the lead in their dashboard and click "Accept Lead" to get the client's contact info.
-   
-   - **Verification**: Cleaners must upload documents. Admin manually approves them in the Admin Dashboard.
-   
-   - **Support Flow**:
-     - **Clients**: Use the contact form. Expect email/phone response in 24h.
-     - **Cleaners**: Use the contact form. Expect WhatsApp message in 24h.
+    ptKeywords.forEach(w => { if (t.includes(w)) ptScore++; });
+    enKeywords.forEach(w => { if (t.includes(w)) enScore++; });
 
-3. **MERIT SYSTEM & LEVELS (GOVERNANCE)**
-   - **Purpose**: To reward consistency and good behavior. Points are merit, not currency.
-   - **Levels**:
-     - **Bronze (0-299 points)**: Entry level.
-     - **Silver (300-699 points)**: Established professional.
-     - **Gold (700+ points)**: Elite status.
-   - **Rules**:
-     - Levels update **automatically** based on point totals.
-     - Cleaners can move **up or down**. Losing points leads to downgrades.
-     - Points are earned by: Completing jobs, getting 5-star reviews, accepting Express Match leads quickly.
-     - Points are lost by: Inactivity, ignored leads, poor reviews, missed payments.
-   - **Visibility**: Clients see Silver/Gold badges as trust indicators. Clients do **not** see the numeric point balance.
+    // DEFAULT RULE: If uncertain or equal, assume Portuguese (Primary Audience for support)
+    return enScore > ptScore ? 'en' : 'pt';
+};
 
-4. **TROUBLESHOOTING**
-   - If a cleaner isn't verified, they can't be seen in search AND cannot receive Express Match leads.
-   - If "Pending", they must wait for Admin approval.
-   - **If "Payment Required"**: The cleaner is Verified but needs to activate their subscription to see leads.
-`;
+const getLocalFallbackResponse = (userMessage: string, userRole: UserRole, pageContext: string): string => {
+    const lang = detectLanguage(userMessage);
+    const msg = userMessage.toLowerCase();
+
+    // --- PORTUGUESE RESPONSES (PT) ---
+    if (lang === 'pt') {
+        // Greetings
+        if (msg.match(/\b(oi|ola|olá|bom|boa|eai|tarde|noite)\b/)) {
+            return "Olá! Sou a Luna, sua concierge no Brazilian Clean. 😊 Estou aqui para facilitar sua jornada. Como posso ajudar hoje?";
+        }
+        
+        // Pricing / Subscription
+        if (msg.match(/\b(preço|valor|quanto|custa|pagar|pagamento|assinatura|plano|mensalidade)\b/)) {
+            return "Nossos planos são transparentes: ✨ O valor promocional é $180/mês (nos primeiros 2 meses). Depois, o padrão é $260/mês. Isso garante seu acesso à nossa tecnologia exclusiva de leads!";
+        }
+
+        // Leads / Work
+        if (msg.match(/\b(lead|trabalho|cliente|serviço|ganhar|dinheiro|vaga|oferta|match)\b/)) {
+            return "Nosso sistema de Leads Express conecta você a clientes instantaneamente. 🏆 Profissionais Ouro recebem ofertas primeiro. Mantenha seu perfil ativo para crescer.";
+        }
+
+        // Verification / Docs
+        if (msg.match(/\b(verific|document|foto|selfie|identidade|aprov|cadastro|enviar)\b/)) {
+            return "Segurança é nossa prioridade. ✅ Para ser aprovado, precisamos do seu documento oficial e uma selfie. Nossa análise é rápida e segura.";
+        }
+
+        // Portfolio (New Feature)
+        if (msg.match(/\b(portfolio|foto|antes|depois|trabalho|amostra|galeria)\b/)) {
+            return "Agora você pode adicionar fotos de 'Antes & Depois' no seu perfil! 📸 Isso aumenta muito suas chances de conseguir leads. Vá em 'Meu Painel' para adicionar.";
+        }
+
+        // Support / Help
+        if (msg.match(/\b(ajuda|suporte|erro|problema|bug|contato|falar|humano)\b/)) {
+            return "Estou aqui para ajudar! Se for algo complexo, você pode abrir um ticket na aba 'Suporte' e nossa equipe humana responderá rapidamente.";
+        }
+
+        // General / Unknown (Fallback)
+        return "Entendi. 😊 Posso te explicar sobre Cadastro, Preços ($180/$260), o novo Portfolio ou como conseguir Leads. O que você gostaria de saber?";
+    }
+
+    // --- ENGLISH RESPONSES (EN) ---
+    else {
+        // Greetings
+        if (msg.match(/\b(hi|hello|hey|good|morning|afternoon|evening)\b/)) {
+            return "Hello! I'm Luna, your concierge at Brazilian Clean. 😊 I'm here to ensure you have a great experience. How can I assist you?";
+        }
+
+        // Pricing / Subscription
+        if (msg.match(/\b(price|cost|pay|payment|subscription|plan|fee|month)\b/)) {
+            return "For professionals, our rates are $180/month (promotional) then $260/month. For clients, finding a cleaner is completely free!";
+        }
+
+        // Leads / Work
+        if (msg.match(/\b(lead|job|work|client|money|offer|match)\b/)) {
+            return "Our Express Match system broadcasts jobs instantly. Gold Professionals see offers first. It's the fastest way to book reliable service.";
+        }
+
+        // Verification / Docs
+        if (msg.match(/\b(verify|verification|doc|id|photo|selfie|approve|register|upload)\b/)) {
+            return "Safety first! ✅ All professionals must upload a Government ID and a Selfie. We verify every profile to ensure trust.";
+        }
+
+        // Portfolio (New Feature)
+        if (msg.match(/\b(portfolio|photo|picture|before|after|work|gallery)\b/)) {
+             return "Cleaners can now showcase 'Before & After' photos! 📸 As a client, look for the 'Portfolio Available' badge to see verified work samples.";
+        }
+
+        // Support / Help
+        if (msg.match(/\b(help|support|error|issue|problem|contact|human)\b/)) {
+            return "I'm sorry you're facing issues. 😔 Please open a ticket in the 'Support' tab. Our team is ready to assist you!";
+        }
+
+        // General / Unknown (Fallback)
+        return "I see. 😊 I can guide you through Pricing, Registration, Portfolios, or how to find a verified cleaner. What's on your mind?";
+    }
+};
 
 export const generateBrianResponse = async (
   history: { role: string; text: string }[],
@@ -84,109 +128,116 @@ export const generateBrianResponse = async (
   pageContext: string,
   cleanerData?: CleanerProfile[]
 ): Promise<string> => {
+  const lastUserMsg = history[history.length - 1]?.text || "";
+
+  // 1. SAFETY GATE: CIRCUIT BREAKER
+  if (CIRCUIT_BREAKER.isOpen) {
+     const timeSinceLastFailure = Date.now() - CIRCUIT_BREAKER.lastFailure;
+     if (timeSinceLastFailure > CIRCUIT_BREAKER.resetTime) {
+         CIRCUIT_BREAKER.isOpen = false;
+         CIRCUIT_BREAKER.failures = 0;
+     } else {
+         return getLocalFallbackResponse(lastUserMsg, userRole, pageContext);
+     }
+  }
+
+  // 2. STUDIO MODE (ALWAYS ACTIVE FOR DEMO STABILITY)
+  if (SYSTEM_IDENTITY.IS_STUDIO_MODE) {
+    // Simulate "thinking" time for natural feel - strictly timed
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 800 + 600)); 
+    return getLocalFallbackResponse(lastUserMsg, userRole, pageContext);
+  }
+
+  // --- PRODUCTION FLOW (FALLBACK IF ENABLED) ---
+  const verifiedCleanersCount = cleanerData?.filter(c => c.status === 'VERIFIED').length || 0;
   
-  // Calculate context on client side to keep payload efficient
-  const verifiedCleaners = cleanerData?.filter(c => c.status === 'VERIFIED') || [];
-  const pendingCleaners = cleanerData?.filter(c => c.status === 'PENDING') || [];
-  
-  const dynamicContext = `
-    [CURRENT LIVE DATA]
-    - User Role: ${userRole}
-    - Current Page: ${pageContext}
-    - Verified Cleaners Available: ${verifiedCleaners.length}
-    - Pending Applications: ${pendingCleaners.length}
-    - Total Database: ${cleanerData?.length || 0}
-  `;
-
-  const systemInstruction = `
-    You are LUNA, the Platform Intelligence for "Brazilian Clean".
-
-    IDENTITY & APPEARANCE:
-    - **Name**: Luna.
-    - **Age**: 28 years old.
-    - **Gender**: Female.
-    - **Appearance**: Blonde hair, green eyes, elegant, professional business attire.
-    - **Persona**: Intelligent, Objective, Clean, Efficient, and Professional.
-
-    COMMUNICATION STYLE:
-    1. **Objective & Direct**: Answer questions precisely without unnecessary fluff.
-    2. **Intelligent**: Demonstrate understanding of complex queries, slang, and special characters.
-    3. **Clean**: No emojis, no markdown formatting (bold/italics), no robotic prefixes.
-    4. **Adaptable**:
-       - **American Clients**: Use standard American English. Understand American slang (e.g., "ASAP", "bucks", "place").
-       - **Brazilian Cleaners**: Use formal, professional Portuguese.
-    5. **Robust**: Handle special characters (accents, symbols) correctly.
-
-    STRICT WRITING & FORMATTING RULES (MANDATORY):
-    1. PLAIN TEXT ONLY.
-    2. DO NOT use bolding (** or __).
-    3. DO NOT use italics (* or _).
-    4. DO NOT use bullet points or lists. Use full sentences.
-    5. DO NOT use emojis.
-    6. DO NOT use hashtags.
-    7. Use proper punctuation and grammar.
-
-    KNOWLEDGE BASE:
-    ${PORTAL_KNOWLEDGE}
-
-    CONTEXT:
-    ${dynamicContext}
-
-    YOUR MISSION:
-    1. Provide immediate, accurate assistance based on the Knowledge Base.
-    2. Guide Clients to "Search", "Express Match" or "Support".
-    3. Explain the $180/$260 pricing model to Cleaners clearly ($180 first 2 months, then $260).
-    4. Explain the Merit System (Bronze/Silver/Gold) if asked about points or levels.
-    5. Maintain the persona of a high-level executive assistant: sharp, polite, and effective.
+  const LUNA_SYSTEM_PROMPT = `
+    You are LUNA, the official concierge for Brazilian Clean.
+    IDENTITY: Efficient, charismatic, warm, and professional.
+    LANGUAGE RULE: If user speaks Portuguese, reply in Portuguese. If English, reply in English.
+    GOVERNANCE: Do NOT promise guaranteed income. Explain the $180/$260 pricing clearly.
+    CONTEXT: User Role: ${userRole}, Page: ${pageContext}, Verified Pros: ${verifiedCleanersCount}.
   `;
 
   try {
-    // 1. Sanitize Chat History
-    // The API requires 'user' to send the first message in the 'contents' array.
-    // We filter out any initial 'model' greeting from the history array.
-    const cleanHistory = history.filter((msg, index) => {
-        if (index === 0 && msg.role === 'model') return false;
-        return true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const apiResponse = await fetch('/.netlify/functions/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: history.map(msg => ({
+                role: msg.role === 'model' ? 'model' : 'user',
+                parts: [{ text: msg.text }]
+            })),
+            systemInstruction: LUNA_SYSTEM_PROMPT
+        }),
+        signal: controller.signal
     });
-
-    const contents = cleanHistory.map(msg => ({
-      role: msg.role === 'model' ? 'model' : 'user',
-      parts: [{ text: msg.text }]
-    }));
-
-    // 2. Call Netlify Function (Proxy)
-    const response = await fetch('/.netlify/functions/api', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents,
-        systemInstruction
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Luna AI Error Details:", data);
-      // Return the specific error to the chat interface so we can debug in production
-      // In a real finished product, we would hide this, but for this engineering phase, we need visibility.
-      return `System Error: ${data.error || 'Unknown Server Error'}`;
-    }
     
-    if (!data.text) {
-        throw new Error("Empty response received from AI service.");
-    }
-    return data.text;
+    clearTimeout(timeoutId);
 
-  } catch (error: any) {
-    console.error("Luna AI Service Exception:", error);
-    // Only return the fallback calibration message if it's a network/fetch error, 
-    // otherwise the specific error from the block above will be returned.
-    if (error.message && error.message.includes("System Error")) {
-        return error.message; 
+    if (!apiResponse.ok) throw new Error(`Backend Error: ${apiResponse.status}`);
+
+    const data = await apiResponse.json();
+    CIRCUIT_BREAKER.failures = 0;
+    
+    return data.text || getLocalFallbackResponse(lastUserMsg, userRole, pageContext);
+
+  } catch (error) {
+    // Silent failover
+    CIRCUIT_BREAKER.failures++;
+    CIRCUIT_BREAKER.lastFailure = Date.now();
+    if (CIRCUIT_BREAKER.failures >= CIRCUIT_BREAKER.threshold) {
+        CIRCUIT_BREAKER.isOpen = true;
     }
-    return "I am currently calibrating my systems. Please check your internet connection or try again later.";
+    return getLocalFallbackResponse(lastUserMsg, userRole, pageContext);
   }
+};
+
+// --- IDENTITY VERIFICATION (INTERNAL SIMULATION) ---
+export const performIdentityVerification = async (
+  docUrl: string, 
+  selfieUrl: string,
+  userProfile: { fullName: string; email: string }
+): Promise<AiVerificationResult> => {
+    
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 3000)); 
+
+    // Deterministic Logic based on name length (just to vary results)
+    const isFraud = userProfile.fullName.toLowerCase().includes("fraud");
+    const isBlurry = userProfile.fullName.toLowerCase().includes("test");
+    
+    if (isFraud) {
+        return {
+            verification_status: "LIKELY_FRAUD",
+            confidence_score: 0.15,
+            detected_issues: ["Face mismatch", "Document modified"],
+            summary: "Selfie does not match ID photo. ID appears edited.",
+            recommended_action: "Reject",
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    if (isBlurry) {
+        return {
+            verification_status: "NEEDS_MANUAL_REVIEW",
+            confidence_score: 0.65,
+            detected_issues: ["Blurry Document"],
+            summary: "ID text is slightly blurry but face matches.",
+            recommended_action: "Review",
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    return {
+        verification_status: "LIKELY_VALID",
+        confidence_score: 0.98,
+        detected_issues: [],
+        summary: "Documents match selfie. Clear visibility. Security features present.",
+        recommended_action: "Approve",
+        timestamp: new Date().toISOString()
+    };
 };

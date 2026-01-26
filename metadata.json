@@ -1,5 +1,7 @@
 {
   "name": "Brazilian clean 3",
   "description": "A dual-interface platform connecting American clients with verified Brazilian house cleaners. Features Express Match, strict verification flows, and Brian, the AI Guardian.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

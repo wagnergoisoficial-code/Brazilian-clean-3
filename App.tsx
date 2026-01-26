@@ -11,15 +11,12 @@ import ExpressMatch from './pages/ExpressMatch';
 import VerifyEmail from './pages/VerifyEmail';
 import Support from './pages/Support';
 import BrianAI from './components/BrianAI';
-import MockEmailService from './MockEmailService';
+import MockEmailService from './components/MockEmailService';
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
     const { userRole } = useAppContext();
-    if (userRole !== allowedRole) {
-        return <Navigate to="/" replace />;
-    }
-    return children;
+    return userRole === allowedRole ? children : <Navigate to="/" replace />;
 };
 
 const AppRoutes = () => {
@@ -31,18 +28,8 @@ const AppRoutes = () => {
             <Route path="/express" element={<ExpressMatch />} />
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/support" element={<Support />} />
-            
-            <Route path="/admin" element={
-                <ProtectedRoute allowedRole={UserRole.ADMIN}>
-                    <AdminDashboard />
-                </ProtectedRoute>
-            } />
-            
-            <Route path="/dashboard" element={
-                 <ProtectedRoute allowedRole={UserRole.CLEANER}>
-                    <CleanerDashboard />
-                </ProtectedRoute>
-            } />
+            <Route path="/admin" element={<ProtectedRoute allowedRole={UserRole.ADMIN}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerDashboard /></ProtectedRoute>} />
         </Routes>
     );
 }
@@ -61,5 +48,4 @@ const App: React.FC = () => {
     </AppProvider>
   );
 };
-
 export default App;

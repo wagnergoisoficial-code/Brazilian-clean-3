@@ -6,7 +6,8 @@ export enum UserRole {
 }
 
 export enum CleanerStatus {
-  PENDING = 'PENDING',
+  EMAIL_PENDING = 'EMAIL_PENDING',
+  UNDER_REVIEW = 'UNDER_REVIEW',
   VERIFIED = 'VERIFIED',
   REJECTED = 'REJECTED'
 }
@@ -22,18 +23,17 @@ export enum SupportType {
   CLEANER = 'CLEANER'
 }
 
-// Payment & Subscription Types
 export enum PaymentMethodType {
   CREDIT_CARD = 'CREDIT_CARD',
   DEBIT_CARD = 'DEBIT_CARD',
   STRIPE = 'STRIPE',
   PAYPAL = 'PAYPAL',
-  ADMIN_EXEMPTION = 'ADMIN_EXEMPTION' // For full exemptions
+  ADMIN_EXEMPTION = 'ADMIN_EXEMPTION'
 }
 
 export enum SubscriptionPlan {
-  PROMO_STARTUP = 'PROMO_STARTUP', // First 2 months ($180)
-  STANDARD_PRO = 'STANDARD_PRO'   // Month 3+ ($260)
+  PROMO_STARTUP = 'PROMO_STARTUP',
+  STANDARD_PRO = 'STANDARD_PRO'
 }
 
 export enum DiscountType {
@@ -42,7 +42,6 @@ export enum DiscountType {
   FULL_EXEMPTION = 'FULL_EXEMPTION'
 }
 
-// MERIT SYSTEM TYPES
 export enum CleanerLevel {
   BRONZE = 'BRONZE',
   SILVER = 'SILVER',
@@ -52,7 +51,7 @@ export enum CleanerLevel {
 export interface PointTransaction {
   id: string;
   amount: number;
-  reason: string; // e.g., "Review 5 stars", "Complete Profile", "Admin Bonus"
+  reason: string;
   date: string;
   campaignId?: string;
   adminId?: string;
@@ -72,7 +71,7 @@ export interface BonusCampaign {
 export interface Discount {
   id: string;
   type: DiscountType;
-  value: number; // 0-100 for PERCENTAGE, amount for FIXED_AMOUNT
+  value: number;
   description: string;
   startDate: string;
   endDate: string;
@@ -86,7 +85,7 @@ export interface Subscription {
   nextBillingDate: string;
   paymentMethod: PaymentMethodType;
   lastPaymentAmount: number;
-  activeDiscount?: Discount; // New field for active discount
+  activeDiscount?: Discount;
   billingHistory: {
     date: string;
     amount: number;
@@ -98,52 +97,62 @@ export interface SupportRequest {
   id: string;
   type: SupportType;
   fullName: string;
-  contactEmail?: string; // For Clients
+  contactEmail?: string;
   contactPhone: string;
-  whatsapp?: string; // For Cleaners
+  whatsapp?: string;
   message: string;
   status: SupportStatus;
   createdAt: string;
   resolvedAt?: string;
 }
 
+export interface AiVerificationResult {
+  verification_status: "LIKELY_VALID" | "NEEDS_MANUAL_REVIEW" | "LIKELY_FRAUD";
+  confidence_score: number;
+  detected_issues: string[];
+  summary: string;
+  recommended_action: "Approve" | "Review" | "Reject";
+  timestamp: string;
+}
+
+export interface PortfolioItem {
+  id: string;
+  serviceType: string;
+  beforeImage: string;
+  afterImage: string;
+  description?: string;
+  createdAt: string;
+  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  adminNote?: string;
+}
+
 export interface CleanerProfile {
   id: string;
   fullName: string;
-  // Personal
   phone: string;
   email: string;
   city: string;
   state: string;
-  
-  // Business
   companyName: string;
   isCompany: boolean;
   yearsExperience: number;
   services: string[];
   zipCodes: string[];
   description: string;
-  
-  // System
   status: CleanerStatus;
   rating: number;
   reviewCount: number;
   joinedDate: string;
-  
-  // Security & Verification
   emailVerified: boolean;
-  verificationToken?: string;
-  
-  // Media / Docs
+  verificationCode?: string;
+  verificationCodeExpires?: number;
   photoUrl: string;
   galleryUrls: string[];
-  documentUrl?: string; 
-  selfieUrl?: string; 
-  
-  // Billing
+  portfolio: PortfolioItem[];
+  documentUrl?: string;
+  selfieUrl?: string;
+  aiVerificationResult?: AiVerificationResult;
   subscription?: Subscription;
-
-  // Merit System
   points: number;
   level: CleanerLevel;
   pointHistory: PointTransaction[];
@@ -155,7 +164,7 @@ export interface ClientProfile {
   email: string;
   phone: string;
   emailVerified: boolean;
-  verificationToken?: string;
+  verificationCode?: string;
   joinedDate: string;
 }
 
@@ -163,7 +172,7 @@ export interface Lead {
   id: string;
   clientName: string;
   clientPhone: string;
-  clientEmail?: string; // Added email to lead
+  clientEmail?: string;
   zipCode: string;
   serviceType: string;
   bedrooms: number;
@@ -172,6 +181,10 @@ export interface Lead {
   status: 'OPEN' | 'ACCEPTED' | 'COMPLETED';
   acceptedByCleanerId?: string;
   createdAt: number;
+  context?: {
+    viewedPortfolio?: boolean;
+    portfolioCount?: number;
+  };
 }
 
 export interface FeedPost {
