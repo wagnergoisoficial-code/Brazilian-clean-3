@@ -1,5 +1,3 @@
-
-
 /**
  * BRAZILIAN CLEAN - SYSTEM MANIFEST
  * =================================
@@ -19,20 +17,20 @@ const detectEnvironment = (): boolean => {
     hostname === 'www.brazilianclean.org' ||
     hostname.endsWith('netlify.app');
 
-  // If we are on a production domain, we MUST be in production mode
+  // Strict production check: if we are on a production domain, we are NEVER in studio mode.
   if (isProductionDomain) return false;
 
-  // Otherwise, default to the NODE_ENV check
-  return process.env.NODE_ENV !== 'production';
+  // Localhost/Preview check
+  return hostname === 'localhost' || hostname === '127.0.0.1';
 };
 
 export const SYSTEM_IDENTITY = {
   NAME: "Brazilian Clean",
-  VERSION: "2.0.0-PROD",
-  LAST_STABLE_BUILD: "2024-05-20",
-  ENVIRONMENT: process.env.NODE_ENV || 'development',
+  VERSION: "2.1.0-PROD",
+  LAST_STABLE_BUILD: "2024-05-21",
+  ENVIRONMENT: process.env.NODE_ENV || 'production',
   CONTACT_EMAIL: "support@brazilianclean.org",
-  // REAL MODE: Forces production behavior on deployment
+  // REAL MODE: Forces production behavior
   IS_STUDIO_MODE: detectEnvironment()
 };
 
@@ -47,5 +45,6 @@ export const CORE_RULES = [
   "1. The platform must always be recoverable.",
   "2. Payments follow the $180/$260 logic rigidly.",
   "3. Real email verification is mandatory.",
-  "4. Graceful failure on third-party API issues."
+  "4. Graceful failure on third-party API issues.",
+  "5. No hardcoded credentials or verification bypasses."
 ];

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -112,7 +111,7 @@ const CleanerRegistration: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!formData.fullName || !formData.phone || !formData.email) {
       alert("Preencha os dados básicos.");
@@ -120,16 +119,17 @@ const CleanerRegistration: React.FC = () => {
     }
     
     setIsSubmitting(true);
-    // Submit
-    const id = registerCleaner({
-        ...formData,
-        zipCodes: formData.zipCodes.split(',').map(z => z.trim()),
-    });
-    
-    // Redirect to verification
-    setTimeout(() => {
+    try {
+        const id = await registerCleaner({
+            ...formData,
+            zipCodes: formData.zipCodes.split(',').map(z => z.trim()),
+        });
         navigate(`/verify?id=${id}`);
-    }, 500);
+    } catch (err) {
+        alert("Erro no cadastro. Verifique sua conexão ou tente novamente mais tarde.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const renderUploadBox = (field: 'photo' | 'document' | 'selfie', label: string, subLabel: string, iconPath: string) => {
@@ -245,9 +245,9 @@ const CleanerRegistration: React.FC = () => {
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl flex items-center justify-center"
+                  className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl flex items-center justify-center disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Registering...' : 'Complete Registration 🚀'}
+                  {isSubmitting ? 'Verifying & Saving...' : 'Complete Registration 🚀'}
                 </button>
              </div>
           )}

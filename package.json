@@ -13,7 +13,8 @@
     "react-dom": "^19.2.3",
     "@google/genai": "^1.38.0",
     "react-router-dom": "^7.12.0",
-    "@netlify/functions": "^5.1.2"
+    "@netlify/functions": "^5.1.2",
+    "crypto": "^1.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

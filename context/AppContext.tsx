@@ -1,15 +1,8 @@
-
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CleanerProfile, CleanerStatus, UserRole, Lead, FeedPost, ClientProfile, SupportRequest, SupportStatus, SupportType, Subscription, SubscriptionPlan, PaymentMethodType, Discount, CleanerLevel, BonusCampaign, PortfolioItem, EmailNotification } from '../types';
 import { addPoints as serviceAddPoints } from '../services/meritService';
 import { performIdentityVerification } from '../services/geminiService';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
-
-// --- HELPER: SECURE RANDOM CODE ---
-const generateVerificationCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
 
 const compressImage = (base64Str: string): Promise<string> => {
   return new Promise((resolve) => {
@@ -53,9 +46,9 @@ interface AppContextType {
   pendingClientCode: string | null;
   pendingClientEmail: string | null;
   setUserRole: (role: UserRole) => void;
-  registerCleaner: (cleaner: Partial<CleanerProfile>) => string;
+  registerCleaner: (cleaner: Partial<CleanerProfile>) => Promise<string>;
   verifyCleanerCode: (cleanerId: string, code: string) => boolean;
-  resendCleanerCode: (cleanerId: string) => void;
+  resendCleanerCode: (cleanerId: string) => Promise<void>;
   registerClient: (client: Partial<ClientProfile>) => void;
   verifyUserEmail: (token: string) => boolean;
   verifyCleaner: (id: string) => void;
@@ -66,7 +59,7 @@ interface AppContextType {
   createBonusCampaign: (campaign: BonusCampaign) => void;
   deleteBonusCampaign: (id: string) => void;
   searchCleaners: (zip: string) => CleanerProfile[];
-  createLead: (lead: Partial<Lead>) => void;
+  createLead: (lead: Partial<Lead>) => Promise<void>;
   deleteLead: (id: string) => void;
   acceptLead: (leadId: string, cleanerId: string) => void;
   createFeedPost: (post: Partial<FeedPost>) => void;
@@ -132,24 +125,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     else localStorage.removeItem('bc_pending_email');
   }, [pendingClientEmail]);
 
-  const sendEmailTrigger = async (to: string, code: string, lang: 'en' | 'pt') => {
+  const requestVerificationEmail = async (to: string, lang: 'en' | 'pt') => {
     try {
       const response = await fetch('/.netlify/functions/sendVerificationEmail', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, code, language: lang })
+        body: JSON.stringify({ to, language: lang })
       });
       const resData = await response.json();
-      console.log("[Resend Dispatch]", resData.success ? "Success" : "Failed", resData.error || "");
+      if (!resData.success) throw new Error(resData.error || "Email delivery failed");
+      return resData.code; // Return generated code
     } catch (e) {
-      console.error("Critical Email Dispatch Error:", e);
+      console.error("Email Dispatch Error:", e);
+      throw e;
     }
   };
 
-  const registerCleaner = (data: Partial<CleanerProfile>): string => {
+  const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    const code = generateVerificationCode();
-    const expires = Date.now() + 15 * 60 * 1000;
+    
+    // Request real code from backend
+    const code = await requestVerificationEmail(data.email || '', 'pt');
+    const expires = Date.now() + 10 * 60 * 1000;
 
     const newCleaner: CleanerProfile = {
       ...data,
@@ -168,15 +165,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } as CleanerProfile;
 
     setCleaners(prev => [...prev, newCleaner]);
-    sendEmailTrigger(newCleaner.email, code, 'pt');
 
+    // Mock Notification only in Studio Mode
     if (SYSTEM_IDENTITY.IS_STUDIO_MODE) {
       setLastEmail({
         to: newCleaner.email,
-        subject: "Confirm your email — Brazilian Clean",
-        body: `Welcome! Use the following code: ${code}. This expires in 15 minutes.`,
+        subject: "Verify Email (Studio Mode)",
+        body: `Code: ${code}`,
         actionLink: `/verify?id=${id}`,
-        actionText: "Verify Email"
+        actionText: "Verify"
       });
     }
 
@@ -204,32 +201,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return false;
   };
 
-  const resendCleanerCode = (cleanerId: string) => {
+  const resendCleanerCode = async (cleanerId: string) => {
     const cleaner = cleaners.find(c => c.id === cleanerId);
     if (!cleaner) return;
-    const code = generateVerificationCode();
-    const expires = Date.now() + 15 * 60 * 1000;
+    
+    const code = await requestVerificationEmail(cleaner.email, 'pt');
+    const expires = Date.now() + 10 * 60 * 1000;
+    
     setCleaners(prev => prev.map(c => c.id === cleanerId ? { ...c, verificationCode: code, verificationCodeExpires: expires } : c));
-    sendEmailTrigger(cleaner.email, code, 'pt');
   };
 
-  const createLead = (l: Partial<Lead>) => {
+  const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
-    const verificationCode = generateVerificationCode();
+    
+    // Request real code
+    const verificationCode = await requestVerificationEmail(l.clientEmail || '', 'en');
     
     setPendingClientCode(verificationCode);
     setPendingClientEmail(l.clientEmail || '');
     setLeads(p => [{...l, id, status: 'OPEN', createdAt: Date.now()} as Lead, ...p]);
     
-    sendEmailTrigger(l.clientEmail || '', verificationCode, 'en');
-
     if (SYSTEM_IDENTITY.IS_STUDIO_MODE) {
       setLastEmail({
           to: l.clientEmail || '',
-          subject: 'Confirm your request – Brazilian Clean',
-          body: `Verification code: ${verificationCode}. Enter it on the verification page.`,
+          subject: 'Confirm Request (Studio Mode)',
+          body: `Code: ${verificationCode}`,
           actionLink: `/verify?type=client&code=${verificationCode}`,
-          actionText: 'Verify Now'
+          actionText: 'Verify'
       });
     }
   };
