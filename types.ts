@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   CLIENT = 'CLIENT',
   CLEANER = 'CLEANER',
@@ -201,4 +202,15 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+}
+
+/**
+ * Added EmailNotification interface to define the structure of mock notifications.
+ */
+export interface EmailNotification {
+  to: string;
+  subject: string;
+  body: string;
+  actionLink: string;
+  actionText: string;
 }

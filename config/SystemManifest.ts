@@ -1,67 +1,51 @@
 
+
 /**
  * BRAZILIAN CLEAN - SYSTEM MANIFEST
  * =================================
  * DOCUMENT OF TRUTH
  * 
  * This file defines the immutable identity and governance rules of the platform.
- * It serves as the single source of truth for versioning and architecture.
  */
 
-// Safe Runtime Environment Detection
 const detectEnvironment = (): boolean => {
-  // 1. Safety check for SSR or non-browser environments (force Studio Mode)
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
 
   const hostname = window.location.hostname;
 
-  // 2. Production Hostname Whitelist
-  // Checks for main domain, www subdomain, and any Netlify preview/production URL
+  // Production Hostname Whitelist
   const isProductionDomain = 
-    hostname.endsWith('netlify.app') || 
-    hostname === 'brazilianclean.com' || 
-    hostname === 'www.brazilianclean.com';
+    hostname === 'brazilianclean.org' || 
+    hostname === 'www.brazilianclean.org' ||
+    hostname.endsWith('netlify.app');
 
-  // 3. Build-time injected flags (if available via bundler)
-  // We use loose check to avoid crashing if process is undefined
-  const isNetlifyEnv = typeof process !== 'undefined' && process.env && process.env.NETLIFY === 'true';
+  // If we are on a production domain, we MUST be in production mode
+  if (isProductionDomain) return false;
 
-  const isProduction = isProductionDomain || isNetlifyEnv;
-
-  // Default to Studio Mode (Safe Mode) unless explicitly in Production
-  // This ensures Google AI Studio / Localhost always run in Mock Mode.
-  return !isProduction;
+  // Otherwise, default to the NODE_ENV check
+  return process.env.NODE_ENV !== 'production';
 };
 
 export const SYSTEM_IDENTITY = {
   NAME: "Brazilian Clean",
-  VERSION: "1.3.2-GUARD", // Incremented for Environment Switch Blindage
-  LAST_STABLE_BUILD: "2023-10-27",
+  VERSION: "2.0.0-PROD",
+  LAST_STABLE_BUILD: "2024-05-20",
   ENVIRONMENT: process.env.NODE_ENV || 'development',
-  CONTACT_EMAIL: "admin@brazilianclean.com",
-  // AUTO-SWITCH: True in Dev/Studio, False in Production
+  CONTACT_EMAIL: "support@brazilianclean.org",
+  // REAL MODE: Forces production behavior on deployment
   IS_STUDIO_MODE: detectEnvironment()
+};
+
+/**
+ * Added RECOVERY_PROTOCOL to define keys for system persistence and recovery.
+ */
+export const RECOVERY_PROTOCOL = {
+  DATA_PERSISTENCE_KEY: 'bc_recovery_master_store'
 };
 
 export const CORE_RULES = [
   "1. The platform must always be recoverable.",
-  "2. Payments must follow the $180/$260 logic rigidly.",
-  "3. Verification is mandatory for cleaner visibility.",
-  "4. No white screens allowed; fail gracefully.",
-  "5. Data must be backed up locally before critical operations.",
-  "6. No deployment allowed without passing Deploy Guard."
+  "2. Payments follow the $180/$260 logic rigidly.",
+  "3. Real email verification is mandatory.",
+  "4. Graceful failure on third-party API issues."
 ];
-
-export const FEATURE_FLAGS = {
-  ENABLE_PAYMENTS: true,
-  ENABLE_AI_LUNA: true,
-  ENABLE_EXPRESS_MATCH: true,
-  ENABLE_AUTO_BACKUP: true,
-  ENABLE_DEPLOY_GUARD: true
-};
-
-export const RECOVERY_PROTOCOL = {
-  MAX_RETRIES: 3,
-  FALLBACK_MODE: "SAFE_MODE",
-  DATA_PERSISTENCE_KEY: "bc_master_backup"
-};

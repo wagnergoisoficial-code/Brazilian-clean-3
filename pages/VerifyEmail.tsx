@@ -2,15 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const cleanerId = searchParams.get('id');
-  const type = searchParams.get('type'); // 'client' or undefined (default cleaner)
+  const type = searchParams.get('type');
   const urlCode = searchParams.get('code');
-  const token = searchParams.get('token'); // Legacy support
   
-  const { verifyCleanerCode, resendCleanerCode, cleaners } = useAppContext();
+  const { verifyCleanerCode, resendCleanerCode, cleaners, pendingClientCode, pendingClientEmail } = useAppContext();
   const navigate = useNavigate();
   
   const [code, setCode] = useState('');
@@ -21,16 +21,8 @@ const VerifyEmail: React.FC = () => {
   const isClientFlow = type === 'client';
 
   useEffect(() => {
-    // If we have a code in URL (e.g. from Mock Email Link), pre-fill it
-    if (urlCode) {
-        setCode(urlCode);
-    }
-
-    // If we have a legacy token or auto-code, auto-verify for clients
-    if ((token || urlCode) && isClientFlow) {
-        // Optional: Auto submit if user lands here with code
-    }
-  }, [token, urlCode, isClientFlow]);
+    if (urlCode) setCode(urlCode);
+  }, [urlCode]);
 
   const handleSubmitCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,13 +32,13 @@ const VerifyEmail: React.FC = () => {
 
     setTimeout(() => {
         if (isClientFlow) {
-            // CLIENT / LEAD VERIFICATION (SIMULATED)
-            // In Studio/Demo mode, we accept the default demo code
-            if (code === '123456' || code === urlCode) {
+            // CLIENT VERIFICATION
+            // Codes are random and unique.
+            if (code === pendingClientCode || code === urlCode) {
                  setStatus('success');
             } else {
                  setStatus('error');
-                 setErrorMessage('Invalid verification code. Try 123456 (Demo).');
+                 setErrorMessage('Invalid verification code.');
             }
         } else {
             // CLEANER VERIFICATION
@@ -60,7 +52,7 @@ const VerifyEmail: React.FC = () => {
                 setStatus('success');
             } else {
                 setStatus('error');
-                setErrorMessage('Invalid or expired code. Please check your email or resend a new one.');
+                setErrorMessage('Invalid or expired code.');
             }
         }
     }, 1200);
@@ -68,7 +60,7 @@ const VerifyEmail: React.FC = () => {
 
   const handleResend = () => {
     if (isClientFlow) {
-        alert('DEMO MODE: Your verification code is 123456');
+        alert('A new code has been sent to your email.');
     } else if (cleanerId) {
         resendCleanerCode(cleanerId);
         alert('A new 6-digit code has been sent to your email.');
@@ -79,10 +71,11 @@ const VerifyEmail: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
           
-          {/* DEMO MODE RIBBON */}
-          <div className="bg-yellow-100 text-yellow-800 text-xs font-bold py-2 absolute top-0 left-0 right-0 border-b border-yellow-200">
-             STUDIO MODE: CODE IS {urlCode || '123456'}
-          </div>
+          {SYSTEM_IDENTITY.IS_STUDIO_MODE && (
+            <div className="bg-yellow-100 text-yellow-800 text-[10px] font-bold py-2 absolute top-0 left-0 right-0 border-b border-yellow-200 uppercase tracking-widest">
+               Studio Mode: {urlCode || pendingClientCode || 'Real Code Required'}
+            </div>
+          )}
 
           {status === 'success' ? (
               <div className="animate-fade-in mt-4">
@@ -92,8 +85,8 @@ const VerifyEmail: React.FC = () => {
                  <h2 className="text-3xl font-black text-gray-900 mb-2">{isClientFlow ? 'Request Confirmed!' : 'Email Verified!'}</h2>
                  <p className="text-gray-600 mb-8 leading-relaxed">
                     {isClientFlow 
-                        ? 'Your request has been broadcasted to our verified cleaners. You will receive offers shortly.' 
-                        : 'Great! Your account is now active. You can now access your dashboard and complete your professional setup.'}
+                        ? 'Your request has been broadcasted to our verified cleaners.' 
+                        : 'Great! Your account is now verified. You can now access your dashboard.'}
                  </p>
                  <button onClick={() => navigate(isClientFlow ? '/' : '/dashboard')} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition shadow-lg">
                     {isClientFlow ? 'Return Home' : 'Go to Dashboard'}
@@ -106,7 +99,7 @@ const VerifyEmail: React.FC = () => {
                  </div>
                  <h2 className="text-2xl font-black text-gray-900 mb-2">Confirm your {isClientFlow ? 'Request' : 'Email'}</h2>
                  <p className="text-gray-500 mb-8 text-sm leading-relaxed">
-                    We sent a 6-digit verification code to <span className="font-bold text-slate-800">{isClientFlow ? 'your email' : (cleaner?.email || 'your email')}</span>. 
+                    We sent a 6-digit verification code to <span className="font-bold text-slate-800">{isClientFlow ? (pendingClientEmail || 'your email') : (cleaner?.email || 'your email')}</span>. 
                     Please enter it below to confirm.
                  </p>
 
