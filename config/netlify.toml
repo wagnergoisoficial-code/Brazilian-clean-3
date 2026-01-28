@@ -1,16 +1,13 @@
-# BRAZILIAN CLEAN - DEPLOYMENT VAULT
-# ==================================
-
 [build]
-  # Comando de build corrigido para usar o script .cjs seguro
-  command = "npm run build && node scripts/deploy-guard.cjs"
+  command = "npm run build"
   publish = "dist"
 
-[context.production]
-  environment = { NODE_ENV = "production", NPM_CONFIG_PRODUCTION = "false" }
+[build.environment]
+  NPM_FLAGS = "--include=dev"
+  NODE_ENV = "production"
 
-[context.deploy-preview]
-  environment = { NODE_ENV = "development" }
+[context.production]
+  environment = { NPM_CONFIG_PRODUCTION = "false" }
 
 [[redirects]]
   from = "/*"
@@ -24,5 +21,4 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     Cache-Control = "public, max-age=0, must-revalidate"

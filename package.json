@@ -13,10 +13,11 @@
     "@netlify/functions": "^5.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.0",
+    "react-router-dom": "^7.1.0"
+  },
+  "devDependencies": {
     "vite": "^6.1.1",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.0"
-  },
-  "devDependencies": {}
+  }
 }

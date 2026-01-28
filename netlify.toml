@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  # Force npm to install all dependencies even if NODE_ENV=production
+  # Force npm to install devDependencies even when NODE_ENV=production
   NPM_FLAGS = "--include=dev"
   NODE_ENV = "production"
 
