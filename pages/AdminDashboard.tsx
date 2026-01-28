@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { 
@@ -47,8 +46,6 @@ const EmptyState: React.FC<{ title: string; message: string; action?: { label: s
 
 const AdminDashboard: React.FC = () => {
   const context = useAppContext();
-  
-  // DEFENSIVE DESTRUCTURING
   const cleaners = context?.cleaners || [];
   const leads = context?.leads || [];
   const supportRequests = context?.supportRequests || [];
@@ -58,14 +55,11 @@ const AdminDashboard: React.FC = () => {
   const [accessCode, setAccessCode] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'cleaners' | 'leads' | 'support' | 'portfolios' | 'ai' | 'settings'>('overview');
 
-  // AGGREGATE PORTFOLIOS
-  // We need to flatten the structure safely
   const allPortfolios = cleaners.flatMap(c => 
     (c.portfolio || []).map(item => ({ ...item, cleanerName: c.fullName, cleanerId: c.id }))
   );
   const pendingPortfolios = allPortfolios.filter(p => p.status === 'PENDING_REVIEW');
 
-  // SAFE STATS CALCULATION
   const stats = {
     pending: cleaners.filter(c => c?.status === CleanerStatus.UNDER_REVIEW).length,
     verified: cleaners.filter(c => c?.status === CleanerStatus.VERIFIED).length,
@@ -99,7 +93,6 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans">
-      {/* Sidebar de Controle */}
       <aside className="w-72 bg-slate-900 text-white flex flex-col sticky top-0 h-screen shrink-0 overflow-y-auto custom-scrollbar">
         <div className="p-8 border-b border-slate-800">
             <h1 className="font-black text-xl tracking-tighter">CONTROLE <span className="text-blue-500 text-xs">v{SYSTEM_IDENTITY.VERSION}</span></h1>
@@ -129,15 +122,12 @@ const AdminDashboard: React.FC = () => {
         </div>
       </aside>
 
-      {/* Workspace */}
       <main className="flex-1 p-10 overflow-y-auto bg-slate-50">
-        
-        {/* TAB: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-10 animate-fade-in">
             <header>
                 <h2 className="text-3xl font-black text-slate-900">Health Check</h2>
-                <p className="text-slate-500">Métricas de governança da plataforma (Environment: {SYSTEM_IDENTITY.IS_STUDIO_MODE ? 'STUDIO' : 'PROD'}).</p>
+                <p className="text-slate-500">Métricas de governança da plataforma (Environment: {SYSTEM_IDENTITY.ENVIRONMENT.toUpperCase()}).</p>
             </header>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
@@ -155,7 +145,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB: CLEANERS */}
         {activeTab === 'cleaners' && (
           <div className="space-y-6 animate-fade-in">
               <header><h2 className="text-3xl font-black text-slate-900">Auditoria de Profissionais</h2></header>
@@ -197,7 +186,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB: PORTFOLIOS */}
         {activeTab === 'portfolios' && (
             <div className="space-y-6 animate-fade-in">
                 <header><h2 className="text-3xl font-black text-slate-900">Revisão de Portfolios</h2></header>
@@ -233,7 +221,6 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* TAB: LEADS */}
         {activeTab === 'leads' && (
           <div className="space-y-6 animate-fade-in">
               <header><h2 className="text-3xl font-black text-slate-900">Gestão de Leads</h2></header>
@@ -261,20 +248,18 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB: AI / LUNA */}
         {activeTab === 'ai' && (
            <div className="space-y-6 animate-fade-in">
               <header><h2 className="text-3xl font-black text-slate-900">Módulo Luna AI</h2></header>
               <div className="bg-blue-900 text-white p-8 rounded-3xl shadow-xl flex justify-between items-center">
                   <div>
-                      <h3 className="text-xl font-bold mb-1">Status do Modelo: {SYSTEM_IDENTITY.IS_STUDIO_MODE ? 'STUDIO SIMULATION' : 'GEMINI PRODUCTION'}</h3>
+                      <h3 className="text-xl font-bold mb-1">Status do Modelo: {SYSTEM_IDENTITY.IS_PRODUCTION ? 'GEMINI PRODUCTION' : 'DEVELOPMENT MODE'}</h3>
                       <p className="text-blue-300 text-sm">Latência média: 1.2s | Respostas bloqueadas: 0</p>
                   </div>
               </div>
            </div>
         )}
 
-         {/* TAB: SETTINGS */}
          {activeTab === 'settings' && (
             <div className="space-y-6 animate-fade-in">
                 <header><h2 className="text-3xl font-black text-slate-900">Configurações</h2></header>
@@ -286,7 +271,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
             </div>
         )}
-
       </main>
     </div>
   );

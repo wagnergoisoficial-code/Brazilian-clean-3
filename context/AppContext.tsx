@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CleanerProfile, CleanerStatus, UserRole, Lead, FeedPost, ClientProfile, SupportRequest, SupportStatus, SupportType, Subscription, SubscriptionPlan, PaymentMethodType, Discount, CleanerLevel, BonusCampaign, PortfolioItem, EmailNotification } from '../types';
 import { addPoints as serviceAddPoints } from '../services/meritService';
-import { performIdentityVerification } from '../services/geminiService';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 const compressImage = (base64Str: string): Promise<string> => {
@@ -134,7 +133,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
       const resData = await response.json();
       if (!resData.success) throw new Error(resData.error || "Email delivery failed");
-      return resData.code; // Return generated code
+      return resData.code;
     } catch (e) {
       console.error("Email Dispatch Error:", e);
       throw e;
@@ -143,8 +142,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    
-    // Request real code from backend
     const code = await requestVerificationEmail(data.email || '', 'pt');
     const expires = Date.now() + 10 * 60 * 1000;
 
@@ -166,11 +163,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setCleaners(prev => [...prev, newCleaner]);
 
-    // Mock Notification only in Studio Mode
-    if (SYSTEM_IDENTITY.IS_STUDIO_MODE) {
+    // Mock Notification ONLY if NOT in production
+    if (!SYSTEM_IDENTITY.IS_PRODUCTION) {
       setLastEmail({
         to: newCleaner.email,
-        subject: "Verify Email (Studio Mode)",
+        subject: "Verify Email (Debug Mode)",
         body: `Code: ${code}`,
         actionLink: `/verify?id=${id}`,
         actionText: "Verify"
@@ -204,27 +201,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const resendCleanerCode = async (cleanerId: string) => {
     const cleaner = cleaners.find(c => c.id === cleanerId);
     if (!cleaner) return;
-    
     const code = await requestVerificationEmail(cleaner.email, 'pt');
     const expires = Date.now() + 10 * 60 * 1000;
-    
     setCleaners(prev => prev.map(c => c.id === cleanerId ? { ...c, verificationCode: code, verificationCodeExpires: expires } : c));
   };
 
   const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
-    
-    // Request real code
     const verificationCode = await requestVerificationEmail(l.clientEmail || '', 'en');
     
     setPendingClientCode(verificationCode);
     setPendingClientEmail(l.clientEmail || '');
     setLeads(p => [{...l, id, status: 'OPEN', createdAt: Date.now()} as Lead, ...p]);
     
-    if (SYSTEM_IDENTITY.IS_STUDIO_MODE) {
+    if (!SYSTEM_IDENTITY.IS_PRODUCTION) {
       setLastEmail({
           to: l.clientEmail || '',
-          subject: 'Confirm Request (Studio Mode)',
+          subject: 'Confirm Request (Debug Mode)',
           body: `Code: ${verificationCode}`,
           actionLink: `/verify?type=client&code=${verificationCode}`,
           actionText: 'Verify'

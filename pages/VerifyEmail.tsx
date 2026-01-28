@@ -20,8 +20,8 @@ const VerifyEmail: React.FC = () => {
   const isClientFlow = type === 'client';
 
   useEffect(() => {
-    // Only pre-fill if in Studio/Development mode for testing
-    if (SYSTEM_IDENTITY.IS_STUDIO_MODE && urlCode) setCode(urlCode);
+    // Only pre-fill if NOT in production mode
+    if (!SYSTEM_IDENTITY.IS_PRODUCTION && urlCode) setCode(urlCode);
   }, [urlCode]);
 
   const handleSubmitCode = (e: React.FormEvent) => {
@@ -31,11 +31,8 @@ const VerifyEmail: React.FC = () => {
     setStatus('verifying');
     setErrorMessage('');
 
-    // Small delay for UX/Verification feel
     setTimeout(() => {
         if (isClientFlow) {
-            // CLIENT VERIFICATION
-            // Strict comparison with server-generated pending code
             if (code === pendingClientCode) {
                  setStatus('success');
             } else {
@@ -43,7 +40,6 @@ const VerifyEmail: React.FC = () => {
                  setErrorMessage('O código inserido é inválido ou expirou.');
             }
         } else {
-            // CLEANER VERIFICATION
             if (!cleanerId) {
                 setStatus('error');
                 setErrorMessage('Link inválido. ID do profissional não encontrado.');
@@ -64,7 +60,6 @@ const VerifyEmail: React.FC = () => {
     try {
         if (isClientFlow) {
             alert('Um novo código foi solicitado para seu email.');
-            // Note: Client resend logic needs to be fully wired in createLead/resend triggers
         } else if (cleanerId) {
             await resendCleanerCode(cleanerId);
             alert('Um novo código de 6 dígitos foi enviado para seu email.');
@@ -78,9 +73,9 @@ const VerifyEmail: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
           
-          {SYSTEM_IDENTITY.IS_STUDIO_MODE && (
+          {!SYSTEM_IDENTITY.IS_PRODUCTION && (
             <div className="bg-yellow-100 text-yellow-800 text-[10px] font-bold py-2 absolute top-0 left-0 right-0 border-b border-yellow-200 uppercase tracking-widest">
-               Studio Mode: {urlCode || pendingClientCode || 'Real Code Required'}
+               DEBUG MODE: {urlCode || pendingClientCode || 'Real Code Required'}
             </div>
           )}
 
