@@ -13,7 +13,8 @@ export const SYSTEM_IDENTITY = {
   LAST_STABLE_BUILD: "2024-05-23",
   // Standard environment detection using process.env
   ENVIRONMENT: 'production',
-  CONTACT_EMAIL: "support@brazilianclean.org",
+  // Alinhado com o subdomínio verificado para evitar problemas de reputação de e-mail
+  CONTACT_EMAIL: "support@mail.brazilianclean.org",
   // Strictly forced to production to disable demo modes
   IS_PRODUCTION: true
 };

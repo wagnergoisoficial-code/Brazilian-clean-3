@@ -26,61 +26,45 @@ export const handler: Handler = async (event) => {
     body = JSON.parse(event.body || '{}');
   } catch (e) {
     return {
-      statusCode: 400,
+      statusCode: 400, 
       headers,
-      body: JSON.stringify({ success: false, error: 'Invalid request body' })
+      body: JSON.stringify({ success: false, error: 'Corpo da requisição inválido' })
     };
   }
 
   const { to, language = 'en' } = body;
-
   if (!to) {
     return { 
       statusCode: 400, 
       headers,
-      body: JSON.stringify({ success: false, error: 'Missing recipient email' }) 
+      body: JSON.stringify({ success: false, error: 'E-mail do destinatário ausente' }) 
     };
   }
 
   const apiKey = process.env.RESEND_API_KEY;
+  // ALINHAMENTO DE DOMÍNIO: O subdomínio 'mail.brazilianclean.org' é o único verificado no Resend.
+  // Alterado o fallback de 'no-reply@brazilianclean.org' para 'no-reply@mail.brazilianclean.org'.
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'no-reply@mail.brazilianclean.org';
   
   if (!apiKey) {
-    console.error("[Backend] RESEND_API_KEY is missing.");
     return { 
       statusCode: 500, 
       headers,
-      body: JSON.stringify({ 
-        success: false, 
-        error: 'Email service configuration error: API Key missing' 
-      }) 
+      body: JSON.stringify({ success: false, error: 'Configuração do servidor incompleta (API Key)' }) 
     };
   }
 
   const code = crypto.randomInt(100000, 999999).toString();
-  const subject = language === 'pt' 
-    ? 'Seu código de verificação – Brazilian Clean' 
-    : 'Confirm your request – Brazilian Clean';
+  const subject = language === 'pt' ? 'Seu código: Brazilian Clean' : 'Your code: Brazilian Clean';
   
-  const text = language === 'pt'
-    ? `Seu código de verificação é: ${code}\nEste código é válido por 10 minutos.`
-    : `Your verification code is: ${code}\nThis code is valid for 10 minutes.`;
-
   const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1e293b; background-color: #f8fafc; border-radius: 12px;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #10b981; margin: 0;">Brazilian Clean</h1>
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1e293b;">
+      <h1 style="color: #10b981;">Brazilian Clean</h1>
+      <p style="font-size: 16px;">${language === 'pt' ? 'Seu código de verificação é:' : 'Your verification code is:'}</p>
+      <div style="background: #f1f5f9; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px;">${code}</span>
       </div>
-      <div style="background-color: #ffffff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-        <p style="font-size: 16px;">
-          ${language === 'pt' ? 'Use o código abaixo para verificar sua solicitação:' : 'Use the code below to verify your request:'}
-        </p>
-        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-radius: 12px; margin: 20px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0f172a;">${code}</span>
-        </div>
-        <p style="font-size: 14px; color: #64748b; text-align: center;">
-          ${language === 'pt' ? 'Este código expira em 10 minutos.' : 'This code expires in 10 minutes.'}
-        </p>
-      </div>
+      <p style="font-size: 12px; color: #64748b;">${language === 'pt' ? 'Expira em 10 minutos.' : 'Expires in 10 minutes.'}</p>
     </div>
   `;
 
@@ -92,31 +76,23 @@ export const handler: Handler = async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Brazilian Clean <no-reply@brazilianclean.org>',
+        from: `Brazilian Clean <${fromEmail}>`,
         to: to,
         subject: subject,
-        html: html,
-        text: text
+        html: html
       })
     });
 
-    const resText = await response.text();
-    let resData;
-    try {
-      resData = JSON.parse(resText);
-    } catch (e) {
-      resData = { message: resText };
-    }
+    const resData: any = await response.json();
 
     if (!response.ok) {
-      console.error("[Backend] Resend API error:", resData);
-      // Se o erro for de domínio não verificado, passamos a mensagem real adiante
+      console.error("[Resend Error]", resData);
       return { 
         statusCode: response.status, 
         headers,
         body: JSON.stringify({ 
           success: false, 
-          error: resData.message || 'Email provider error' 
+          error: resData.message || 'Erro no provedor de e-mail' 
         }) 
       };
     }
@@ -127,11 +103,10 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, code: code })
     };
   } catch (error: any) {
-    console.error("[Backend] Unexpected error:", error);
     return { 
       statusCode: 500, 
       headers,
-      body: JSON.stringify({ success: false, error: 'Internal server error during email dispatch' }) 
+      body: JSON.stringify({ success: false, error: 'Falha interna ao disparar e-mail' }) 
     };
   }
 };

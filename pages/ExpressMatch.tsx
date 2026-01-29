@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +7,7 @@ const ExpressMatch: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     zipCode: '',
@@ -17,7 +17,7 @@ const ExpressMatch: React.FC = () => {
     date: '',
     clientName: '',
     clientPhone: '',
-    clientEmail: '' // Added Email
+    clientEmail: ''
   });
 
   const services = [
@@ -30,14 +30,16 @@ const ExpressMatch: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     
     try {
-      // Simulate API delay for effect and perform real email verification dispatch
       await createLead(formData);
-      setStep(4); // Success Step - Only reached if createLead succeeds
-    } catch (error: any) {
-      console.error("Submission error:", error);
-      alert(`Erro ao processar solicitação: ${error.message || "Falha no envio do e-mail de verificação."}`);
+      setStep(4);
+    } catch (err: any) {
+      console.error("Submission error:", err);
+      // Extrai mensagem específica do domínio se houver
+      const msg = err.message || "Falha ao enviar e-mail de verificação.";
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -53,7 +55,6 @@ const ExpressMatch: React.FC = () => {
     <div className="min-h-[calc(100vh-64px)] bg-teal-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
         
-        {/* Header */}
         <div className="bg-blue-900 p-8 text-center text-white relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-blue-800 opacity-50 transform rotate-3 scale-110"></div>
           <div className="relative z-10">
@@ -62,7 +63,6 @@ const ExpressMatch: React.FC = () => {
           </div>
         </div>
 
-        {/* Progress Bar */}
         <div className="h-2 bg-gray-100 w-full">
             <div 
               className="h-full bg-green-500 transition-all duration-500 ease-out"
@@ -72,7 +72,17 @@ const ExpressMatch: React.FC = () => {
 
         <div className="p-8">
           
-          {/* STEP 1: SERVICE DETAILS */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm animate-fade-in">
+              <p className="font-bold flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
+                Erro de Verificação
+              </p>
+              <p className="mt-1">{error}</p>
+              <p className="mt-2 text-xs opacity-75">Dica: Se você for o administrador, verifique o domínio no painel da Resend.</p>
+            </div>
+          )}
+
           {step === 1 && (
             <div className="animate-fade-in">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">What kind of clean do you need?</h2>
@@ -93,41 +103,15 @@ const ExpressMatch: React.FC = () => {
                   </button>
                 ))}
               </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</label>
-                    <select 
-                      value={formData.bedrooms}
-                      onChange={(e) => setFormData({...formData, bedrooms: parseInt(e.target.value)})}
-                      className="block w-full border-gray-300 rounded-lg shadow-sm border p-3"
-                    >
-                      {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Bathrooms</label>
-                    <select 
-                      value={formData.bathrooms}
-                      onChange={(e) => setFormData({...formData, bathrooms: parseInt(e.target.value)})}
-                      className="block w-full border-gray-300 rounded-lg shadow-sm border p-3"
-                    >
-                      {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                 </div>
-              </div>
-
               <button onClick={handleNext} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
                 Next: Location & Date &rarr;
               </button>
             </div>
           )}
 
-          {/* STEP 2: LOCATION & TIME */}
           {step === 2 && (
              <div className="animate-fade-in">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Where and When?</h2>
-                
                 <div className="space-y-6 mb-8">
                    <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">ZIP Code</label>
@@ -137,121 +121,55 @@ const ExpressMatch: React.FC = () => {
                         value={formData.zipCode}
                         onChange={(e) => setFormData({...formData, zipCode: e.target.value.replace(/\D/g,'')})}
                         placeholder="e.g. 94103"
-                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 text-lg focus:ring-green-500 focus:border-green-500"
+                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 text-lg focus:ring-green-500"
                         autoFocus
                       />
                    </div>
-                   
                    <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Preferred Date</label>
                       <input 
                         type="date" 
                         value={formData.date}
                         onChange={(e) => setFormData({...formData, date: e.target.value})}
-                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 text-lg focus:ring-green-500 focus:border-green-500"
+                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 text-lg focus:ring-green-500"
                       />
                    </div>
                 </div>
-
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(1)} className="flex-1 text-gray-600 font-bold py-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition">
-                    Back
-                  </button>
-                  <button onClick={handleNext} className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
-                    Next: Contact Info &rarr;
-                  </button>
+                  <button onClick={() => setStep(1)} className="flex-1 text-gray-600 font-bold py-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition">Back</button>
+                  <button onClick={handleNext} className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">Next &rarr;</button>
                 </div>
              </div>
           )}
 
-          {/* STEP 3: CONTACT INFO */}
           {step === 3 && (
              <div className="animate-fade-in">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Who should we contact?</h2>
-                <p className="text-gray-500 mb-6">Cleaners will see your request and contact you directly to confirm.</p>
-                
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Contact Info</h2>
                 <form onSubmit={handleSubmit} className="space-y-6 mb-8">
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Your Name</label>
-                      <input 
-                        required
-                        type="text" 
-                        value={formData.clientName}
-                        onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                        placeholder="John Doe"
-                        disabled={isSubmitting}
-                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:text-gray-400"
-                      />
-                   </div>
+                   <input required type="text" value={formData.clientName} onChange={(e) => setFormData({...formData, clientName: e.target.value})} placeholder="Full Name" className="block w-full border p-4 rounded-xl" />
+                   <input required type="email" value={formData.clientEmail} onChange={(e) => setFormData({...formData, clientEmail: e.target.value})} placeholder="Email Address" className="block w-full border p-4 rounded-xl" />
+                   <input required type="tel" value={formData.clientPhone} onChange={(e) => setFormData({...formData, clientPhone: e.target.value})} placeholder="Phone Number" className="block w-full border p-4 rounded-xl" />
                    
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                      <input 
-                        required
-                        type="email" 
-                        value={formData.clientEmail}
-                        onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
-                        placeholder="john@example.com"
-                        disabled={isSubmitting}
-                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:text-gray-400"
-                      />
-                   </div>
-                   
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
-                      <input 
-                        required
-                        type="tel" 
-                        value={formData.clientPhone}
-                        onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
-                        placeholder="(555) 123-4567"
-                        disabled={isSubmitting}
-                        className="block w-full border-gray-300 rounded-lg shadow-sm border p-4 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:text-gray-400"
-                      />
-                   </div>
-                   
-                   <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-500 flex gap-3">
-                      <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/></svg>
-                      Your information is secure. A verification email will be sent to confirm your request.
-                   </div>
-
                    <div className="flex gap-4">
-                    <button type="button" disabled={isSubmitting} onClick={() => setStep(2)} className="flex-1 text-gray-600 font-bold py-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition disabled:opacity-50">
-                      Back
-                    </button>
-                    <button type="submit" disabled={isSubmitting} className="flex-[2] bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg flex justify-center items-center disabled:opacity-80 disabled:cursor-not-allowed">
-                      {isSubmitting ? (
-                         <>
-                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Processing...
-                         </>
-                      ) : 'Broadcast Request 🚀'}
+                    <button type="button" onClick={() => setStep(2)} className="flex-1 border p-4 rounded-xl">Back</button>
+                    <button type="submit" disabled={isSubmitting} className="flex-[2] bg-green-500 text-white font-bold py-4 rounded-xl disabled:opacity-50">
+                      {isSubmitting ? 'Sending...' : 'Broadcast Request 🚀'}
                     </button>
                   </div>
                 </form>
              </div>
           )}
 
-          {/* STEP 4: SUCCESS */}
           {step === 4 && (
             <div className="animate-scale-in text-center py-8">
                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                  <svg className="w-12 h-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                </div>
-               <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Request Received!</h2>
-               <p className="text-lg text-gray-600 mb-8">
-                 We've sent a verification email to <strong>{formData.clientEmail}</strong>.
-                 <br/><span className="text-sm text-gray-400">Please check your inbox (and spam folder) for the 6-digit verification code.</span>
-               </p>
-               <button onClick={() => navigate('/verify?type=client')} className="bg-slate-900 text-white px-8 py-3 rounded-full font-bold hover:bg-slate-800 transition">
-                 Verify Request Now &rarr;
-               </button>
+               <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Check Your Inbox</h2>
+               <p className="text-lg text-gray-600 mb-8">We've sent a code to <strong>{formData.clientEmail}</strong>.</p>
+               <button onClick={() => navigate('/verify?type=client')} className="bg-slate-900 text-white px-8 py-3 rounded-full font-bold">Verify Now &rarr;</button>
             </div>
           )}
-
         </div>
       </div>
     </div>
