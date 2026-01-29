@@ -134,7 +134,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const resData = await response.json();
       if (!resData.success) throw new Error(resData.error || "Email delivery failed");
       return resData.code;
-    } catch (e) {
+    } catch (e: any) {
       console.error("Email Dispatch Error:", e);
       throw e;
     }
@@ -162,8 +162,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } as CleanerProfile;
 
     setCleaners(prev => [...prev, newCleaner]);
-
-    // Mock Notifications DISABLED for production stability
     return id;
   };
 
@@ -203,8 +201,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPendingClientCode(verificationCode);
     setPendingClientEmail(l.clientEmail || '');
     setLeads(p => [{...l, id, status: 'OPEN', createdAt: Date.now()} as Lead, ...p]);
-    
-    // Mock Notifications DISABLED for production stability
   };
 
   const registerClient = (data: Partial<ClientProfile>) => {
