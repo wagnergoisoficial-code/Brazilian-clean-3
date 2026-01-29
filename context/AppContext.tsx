@@ -48,6 +48,7 @@ interface AppContextType {
   registerCleaner: (cleaner: Partial<CleanerProfile>) => Promise<string>;
   verifyCleanerCode: (cleanerId: string, code: string) => boolean;
   resendCleanerCode: (cleanerId: string) => Promise<void>;
+  resendClientCode: () => Promise<void>;
   registerClient: (client: Partial<ClientProfile>) => void;
   verifyUserEmail: (token: string) => boolean;
   verifyCleaner: (id: string) => void;
@@ -194,6 +195,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCleaners(prev => prev.map(c => c.id === cleanerId ? { ...c, verificationCode: code, verificationCodeExpires: expires } : c));
   };
 
+  const resendClientCode = async () => {
+    if (!pendingClientEmail) return;
+    const verificationCode = await requestVerificationEmail(pendingClientEmail, 'en');
+    setPendingClientCode(verificationCode);
+  };
+
   const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
     const verificationCode = await requestVerificationEmail(l.clientEmail || '', 'en');
@@ -249,7 +256,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{ 
       cleaners, clients, leads, feedPosts, supportRequests, bonusCampaigns, userRole, setUserRole, 
       pendingClientCode, pendingClientEmail,
-      registerCleaner, verifyCleanerCode, resendCleanerCode, registerClient, verifyUserEmail, verifyCleaner, rejectCleaner, deleteCleaner,
+      registerCleaner, verifyCleanerCode, resendCleanerCode, resendClientCode, registerClient, verifyUserEmail, verifyCleaner, rejectCleaner, deleteCleaner,
       activateSubscription, addCleanerPoints, createBonusCampaign, deleteBonusCampaign, searchCleaners, createLead, deleteLead, acceptLead, 
       createFeedPost, deleteFeedPost, createSupportRequest, updateSupportStatus, 
       addPortfolioItem, updatePortfolioStatus,
