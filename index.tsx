@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import SystemGuardian from './components/SystemGuardian';
+import './assets/css/main.css';
 
 // Carregamento defensivo do serviço de backup
 try {

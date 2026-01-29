@@ -1,0 +1,16 @@
+.bc-card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300;
+  
+  &:hover {
+    @apply shadow-xl;
+    transform: translateY(-4px);
+  }
+
+  &__image-container {
+    @apply h-56 bg-gray-200 relative overflow-hidden;
+  }
+
+  &__content {
+    @apply p-6 flex flex-col;
+  }
+}

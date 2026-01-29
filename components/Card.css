@@ -1,0 +1,27 @@
+/* Card Component Styles (Production Ready) */
+.bc-card {
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bc-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-4px);
+}
+
+.bc-card__image-container {
+  height: 14rem;
+  background-color: #e5e7eb;
+  position: relative;
+  overflow: hidden;
+}
+
+.bc-card__content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
