@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -30,13 +31,16 @@ const ExpressMatch: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API delay for effect
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    createLead(formData);
-    
-    setIsSubmitting(false);
-    setStep(4); // Success Step
+    try {
+      // Simulate API delay for effect and perform real email verification dispatch
+      await createLead(formData);
+      setStep(4); // Success Step - Only reached if createLead succeeds
+    } catch (error: any) {
+      console.error("Submission error:", error);
+      alert(`Erro ao processar solicitação: ${error.message || "Falha no envio do e-mail de verificação."}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleNext = () => {

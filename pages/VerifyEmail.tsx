@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -20,9 +21,12 @@ const VerifyEmail: React.FC = () => {
   const isClientFlow = type === 'client';
 
   useEffect(() => {
-    // Only pre-fill if explicitly provided in URL and NOT in production mode
-    // (SYSTEM_IDENTITY.IS_PRODUCTION is now hardcoded to true)
-    if (!SYSTEM_IDENTITY.IS_PRODUCTION && urlCode) setCode(urlCode);
+    // Strictly no pre-fill in production mode to force real verification
+    if (!SYSTEM_IDENTITY.IS_PRODUCTION && urlCode) {
+      setCode(urlCode);
+    } else {
+      setCode('');
+    }
   }, [urlCode]);
 
   const handleSubmitCode = (e: React.FormEvent) => {
@@ -61,6 +65,7 @@ const VerifyEmail: React.FC = () => {
     try {
         if (isClientFlow) {
             alert('Um novo código foi solicitado para seu email.');
+            // Implementation logic in context handles the actual dispatch if needed
         } else if (cleanerId) {
             await resendCleanerCode(cleanerId);
             alert('Um novo código de 6 dígitos foi enviado para seu email.');
@@ -106,7 +111,7 @@ const VerifyEmail: React.FC = () => {
                             required
                             type="text" 
                             maxLength={6}
-                            placeholder="000000"
+                            placeholder="------"
                             value={code}
                             onChange={(e) => setCode(e.target.value.replace(/\D/g,''))}
                             className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-2xl text-center text-3xl font-black tracking-widest focus:border-blue-500 outline-none transition"
