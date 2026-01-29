@@ -9,13 +9,13 @@
 
 export const SYSTEM_IDENTITY = {
   NAME: "Brazilian Clean",
-  VERSION: "2.2.0-PROD",
-  LAST_STABLE_BUILD: "2024-05-22",
+  VERSION: "2.3.0-PROD",
+  LAST_STABLE_BUILD: "2024-05-23",
   // Standard environment detection using process.env
-  ENVIRONMENT: process.env.NODE_ENV || 'production',
+  ENVIRONMENT: 'production',
   CONTACT_EMAIL: "support@brazilianclean.org",
-  // Strictly production if NODE_ENV is set to 'production'
-  IS_PRODUCTION: process.env.NODE_ENV === 'production'
+  // Strictly forced to production to disable demo modes
+  IS_PRODUCTION: true
 };
 
 /**

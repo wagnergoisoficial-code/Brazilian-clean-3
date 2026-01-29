@@ -163,17 +163,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setCleaners(prev => [...prev, newCleaner]);
 
-    // Mock Notification ONLY if NOT in production
-    if (!SYSTEM_IDENTITY.IS_PRODUCTION) {
-      setLastEmail({
-        to: newCleaner.email,
-        subject: "Verify Email (Debug Mode)",
-        body: `Code: ${code}`,
-        actionLink: `/verify?id=${id}`,
-        actionText: "Verify"
-      });
-    }
-
+    // Mock Notifications DISABLED for production stability
     return id;
   };
 
@@ -214,15 +204,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPendingClientEmail(l.clientEmail || '');
     setLeads(p => [{...l, id, status: 'OPEN', createdAt: Date.now()} as Lead, ...p]);
     
-    if (!SYSTEM_IDENTITY.IS_PRODUCTION) {
-      setLastEmail({
-          to: l.clientEmail || '',
-          subject: 'Confirm Request (Debug Mode)',
-          body: `Code: ${verificationCode}`,
-          actionLink: `/verify?type=client&code=${verificationCode}`,
-          actionText: 'Verify'
-      });
-    }
+    // Mock Notifications DISABLED for production stability
   };
 
   const registerClient = (data: Partial<ClientProfile>) => {

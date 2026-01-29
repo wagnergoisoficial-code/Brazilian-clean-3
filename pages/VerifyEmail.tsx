@@ -20,7 +20,8 @@ const VerifyEmail: React.FC = () => {
   const isClientFlow = type === 'client';
 
   useEffect(() => {
-    // Only pre-fill if NOT in production mode
+    // Only pre-fill if explicitly provided in URL and NOT in production mode
+    // (SYSTEM_IDENTITY.IS_PRODUCTION is now hardcoded to true)
     if (!SYSTEM_IDENTITY.IS_PRODUCTION && urlCode) setCode(urlCode);
   }, [urlCode]);
 
@@ -73,12 +74,6 @@ const VerifyEmail: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
           
-          {!SYSTEM_IDENTITY.IS_PRODUCTION && (
-            <div className="bg-yellow-100 text-yellow-800 text-[10px] font-bold py-2 absolute top-0 left-0 right-0 border-b border-yellow-200 uppercase tracking-widest">
-               DEBUG MODE: {urlCode || pendingClientCode || 'Real Code Required'}
-            </div>
-          )}
-
           {status === 'success' ? (
               <div className="animate-fade-in mt-4">
                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
