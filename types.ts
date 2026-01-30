@@ -5,6 +5,13 @@ export enum UserRole {
   ADMIN = 'ADMIN'
 }
 
+export enum AdminRole {
+  ADMIN_MASTER = 'ADMIN_MASTER',
+  ADMIN = 'ADMIN',
+  SUPPORT = 'SUPPORT',
+  AUDITOR = 'AUDITOR'
+}
+
 export enum CleanerStatus {
   EMAIL_PENDING = 'EMAIL_PENDING',
   BUSINESS_PENDING = 'BUSINESS_PENDING',
@@ -27,6 +34,50 @@ export enum SupportType {
   CLEANER = 'CLEANER'
 }
 
+export interface AdminPermissions {
+  canApproveDocuments: boolean;
+  canRejectDocuments: boolean;
+  canViewPII: boolean;
+  canResetPassword: boolean;
+  canResendVerificationCode: boolean;
+  canViewLeads: boolean;
+  canManageTeam: boolean;
+  canViewAuditLogs: boolean;
+}
+
+export interface TeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AdminRole;
+  status: 'ACTIVE' | 'SUSPENDED';
+  lastLogin?: string;
+  permissions: AdminPermissions;
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  fullName: string;
+  role: AdminRole;
+  token: string;
+  expiresAt: number;
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED';
+  permissions: AdminPermissions;
+}
+
+export interface AuditLog {
+  id: string;
+  adminId: string;
+  adminName: string;
+  action: string;
+  targetId?: string;
+  targetType?: 'CLEANER' | 'CLIENT' | 'TEAM_MEMBER';
+  timestamp: string;
+  details: string;
+}
+
+// Rest of the existing interfaces preserved exactly...
 export enum PaymentMethodType {
   CREDIT_CARD = 'CREDIT_CARD',
   DEBIT_CARD = 'DEBIT_CARD',
@@ -143,10 +194,10 @@ export interface CleanerProfile {
   companyName: string;
   isCompany: boolean;
   yearsExperience: number;
-  services: string[]; // Normalized keys like "deep_cleaning"
-  baseZip: string; // The primary location
-  serviceRadius: number; // Radius in miles (5, 10, 15, 25)
-  zipCodes: string[]; // Manual additional ZIPs
+  services: string[];
+  baseZip: string;
+  serviceRadius: number;
+  zipCodes: string[];
   description: string;
   status: CleanerStatus;
   rating: number;
@@ -188,7 +239,7 @@ export interface Lead {
   clientPhone: string;
   clientEmail?: string;
   zipCode: string;
-  serviceType: string; // Map to normalized keys
+  serviceType: string;
   bedrooms: number;
   bathrooms: number;
   date: string;
