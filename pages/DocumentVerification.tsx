@@ -1,9 +1,158 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { CleanerStatus } from '../types';
 import { performIdentityVerification } from '../services/geminiService';
+
+interface ImageEditorProps {
+  imageSrc: string;
+  aspectRatio: number; // width / height
+  onConfirm: (croppedBase64: string) => void;
+  onCancel: () => void;
+  title: string;
+}
+
+const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConfirm, onCancel, title }) => {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [scale, setScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    // Reset positioning when a new image is loaded
+    setPosition({ x: 0, y: 0 });
+    setScale(1);
+  }, [imageSrc]);
+
+  const handleStart = (clientX: number, clientY: number) => {
+    setIsDragging(true);
+    setDragStart({ x: clientX - position.x, y: clientY - position.y });
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    setPosition({
+      x: clientX - dragStart.x,
+      y: clientY - dragStart.y
+    });
+  };
+
+  const handleEnd = () => setIsDragging(false);
+
+  const handleConfirm = () => {
+    if (!imageRef.current || !containerRef.current) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Normalize resolution (e.g., 1280px width for documents)
+    const targetWidth = 1280;
+    const targetHeight = targetWidth / aspectRatio;
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const imgRect = imageRef.current.getBoundingClientRect();
+
+    // Calculate relative coordinates
+    const displayedWidth = imgRect.width;
+    const displayedHeight = imgRect.height;
+
+    // Natural dimensions of the source image
+    const naturalWidth = imageRef.current.naturalWidth;
+    const naturalHeight = imageRef.current.naturalHeight;
+
+    // Scale ratio between natural and displayed
+    const scaleX = naturalWidth / displayedWidth;
+    const scaleY = naturalHeight / displayedHeight;
+
+    // Source coordinates relative to image
+    const sx = (rect.left - imgRect.left) * scaleX;
+    const sy = (rect.top - imgRect.top) * scaleY;
+    const sWidth = rect.width * scaleX;
+    const sHeight = rect.height * scaleY;
+
+    ctx.drawImage(
+      imageRef.current,
+      sx, sy, sWidth, sHeight,
+      0, 0, targetWidth, targetHeight
+    );
+
+    onConfirm(canvas.toDataURL('image/jpeg', 0.85));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/95 z-[60] flex flex-col items-center justify-center p-4 animate-fade-in font-sans">
+      <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{title}</h3>
+          <button onClick={onCancel} className="text-slate-400 hover:text-slate-900 transition">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <div className="p-8 space-y-6">
+          <p className="text-xs text-slate-500 font-medium text-center">Arraste a imagem para alinhar dentro do quadro.</p>
+          
+          <div className="relative w-full aspect-[3/2] bg-slate-100 rounded-2xl overflow-hidden border-2 border-slate-200">
+            {/* Guide Overlay */}
+            <div className="absolute inset-0 z-10 pointer-events-none border-[20px] border-slate-900/40">
+              <div 
+                ref={containerRef}
+                className="w-full h-full border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(15,23,42,0.4)]"
+              ></div>
+            </div>
+
+            {/* Draggable Image */}
+            <img
+              ref={imageRef}
+              src={imageSrc}
+              alt="Adjustment"
+              draggable={false}
+              onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
+              onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
+              onMouseUp={handleEnd}
+              onMouseLeave={handleEnd}
+              onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
+              onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
+              onTouchEnd={handleEnd}
+              style={{
+                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                cursor: isDragging ? 'grabbing' : 'grab',
+                maxWidth: 'none',
+                maxHeight: 'none',
+                width: 'auto',
+                height: '100%',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+              }}
+            />
+          </div>
+
+          <div className="flex gap-2 items-center justify-center">
+            <button onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
+            </button>
+            <span className="text-[10px] font-bold text-slate-400 w-12 text-center">{Math.round(scale * 100)}%</span>
+            <button onClick={() => setScale(s => Math.min(3, s + 0.1))} className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-4">
+            <button onClick={onCancel} className="bg-slate-50 text-slate-400 py-4 rounded-2xl font-black uppercase tracking-widest text-xs">Tirar novamente</button>
+            <button onClick={handleConfirm} className="bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl hover:bg-blue-700 transition">Confirmar foto</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DocumentVerification: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -22,6 +171,10 @@ const DocumentVerification: React.FC = () => {
       selfieWithDoc: ''
   });
   const [isVerifying, setIsVerifying] = useState(false);
+  
+  // Image editing state
+  const [editingField, setEditingField] = useState<keyof typeof assets | null>(null);
+  const [tempImage, setTempImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!myProfile) {
@@ -32,9 +185,25 @@ const DocumentVerification: React.FC = () => {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>, field: keyof typeof assets) => {
     if (e.target.files && e.target.files[0]) {
         const reader = new FileReader();
-        reader.onload = () => setAssets(prev => ({ ...prev, [field]: reader.result as string }));
+        reader.onload = () => {
+          // Instead of saving directly, open the editor for documents
+          if (field === 'docFront' || field === 'docBack') {
+            setTempImage(reader.result as string);
+            setEditingField(field);
+          } else {
+            setAssets(prev => ({ ...prev, [field]: reader.result as string }));
+          }
+        };
         reader.readAsDataURL(e.target.files[0]);
     }
+  };
+
+  const onCropConfirm = (croppedBase64: string) => {
+    if (editingField) {
+      setAssets(prev => ({ ...prev, [editingField]: croppedBase64 }));
+    }
+    setEditingField(null);
+    setTempImage(null);
   };
 
   const handleNext = () => {
@@ -74,6 +243,16 @@ const DocumentVerification: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans">
+      {editingField && tempImage && (
+        <ImageEditor 
+          imageSrc={tempImage}
+          title={editingField === 'docFront' ? 'Ajustar Frente' : 'Ajustar Verso'}
+          aspectRatio={3/2}
+          onConfirm={onCropConfirm}
+          onCancel={() => { setEditingField(null); setTempImage(null); }}
+        />
+      )}
+
       <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in">
         <div className="bg-slate-900 p-8 text-center text-white">
            <div className="flex justify-center gap-1 mb-6">
@@ -101,6 +280,9 @@ const DocumentVerification: React.FC = () => {
                                 </div>
                                 <input type="file" accept="image/*" onChange={e => handleFile(e, 'docFront')} className="absolute inset-0 opacity-0 cursor-pointer" />
                             </div>
+                            {assets.docFront && (
+                              <button onClick={() => { setTempImage(assets.docFront); setEditingField('docFront'); }} className="text-[9px] font-bold text-blue-600 uppercase tracking-widest block mx-auto hover:underline">Reajustar Foto</button>
+                            )}
                         </div>
                         <div className="space-y-3">
                             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Documento: Verso</label>
@@ -110,6 +292,9 @@ const DocumentVerification: React.FC = () => {
                                 </div>
                                 <input type="file" accept="image/*" onChange={e => handleFile(e, 'docBack')} className="absolute inset-0 opacity-0 cursor-pointer" />
                             </div>
+                            {assets.docBack && (
+                              <button onClick={() => { setTempImage(assets.docBack); setEditingField('docBack'); }} className="text-[9px] font-bold text-blue-600 uppercase tracking-widest block mx-auto hover:underline">Reajustar Foto</button>
+                            )}
                         </div>
                     </div>
                     <button onClick={handleNext} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl">Continuar para Passo 2</button>
