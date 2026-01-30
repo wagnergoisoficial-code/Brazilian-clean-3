@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { CleanerStatus, PaymentMethodType, SubscriptionPlan, CleanerLevel, UserRole } from '../types';
@@ -94,10 +95,10 @@ const PortfolioUploadModal: React.FC<{ onClose: () => void; onUpload: (data: any
 };
 
 const CleanerDashboard: React.FC = () => {
-  const { cleaners, leads, acceptLead, setIsChatOpen, activateSubscription, addPortfolioItem, setUserRole } = useAppContext();
+  const { cleaners, leads, acceptLead, setIsChatOpen, activateSubscription, addPortfolioItem, authenticatedCleanerId, logoutCleaner } = useAppContext();
   const navigate = useNavigate();
   
-  const myProfile = cleaners.length > 0 ? cleaners[cleaners.length - 1] : null; 
+  const myProfile = cleaners.find(c => c.id === authenticatedCleanerId); 
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType | null>(null);
@@ -105,12 +106,18 @@ const CleanerDashboard: React.FC = () => {
 
   useEffect(() => {
     // SECURITY & FLOW ENFORCEMENT
-    if (!myProfile) {
+    if (!authenticatedCleanerId) {
         navigate('/join');
         return;
     }
 
-    // Step 1: Verification
+    if (!myProfile) {
+        logoutCleaner();
+        navigate('/join');
+        return;
+    }
+
+    // Step 1: Verification (Already handled by VerifyEmail logic, but safe to keep)
     if (myProfile.status === CleanerStatus.EMAIL_PENDING) {
         navigate(`/verify?id=${myProfile.id}`);
         return;
@@ -128,11 +135,11 @@ const CleanerDashboard: React.FC = () => {
         return;
     }
 
-  }, [myProfile, navigate]);
+  }, [authenticatedCleanerId, myProfile, navigate, logoutCleaner]);
 
   const handleLogout = () => {
-    if (window.confirm("Deseja realmente sair do painel?")) {
-      setUserRole(UserRole.CLIENT);
+    if (window.confirm("Deseja realmente sair do painel? Você precisará de um novo código de 6 dígitos para entrar novamente.")) {
+      logoutCleaner();
       navigate('/');
     }
   };

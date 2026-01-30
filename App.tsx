@@ -18,7 +18,13 @@ import DocumentVerification from './pages/DocumentVerification';
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
-    const { userRole } = useAppContext();
+    const { userRole, authenticatedCleanerId } = useAppContext();
+    
+    // Strict logic: If cleaner role is required, we MUST have a verified cleaner ID (session)
+    if (allowedRole === UserRole.CLEANER && !authenticatedCleanerId) {
+        return <Navigate to="/join" replace />;
+    }
+
     return userRole === allowedRole ? children : <Navigate to="/" replace />;
 };
 
@@ -32,7 +38,7 @@ const AppRoutes = () => {
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/support" element={<Support />} />
             
-            {/* New Onboarding Flow Routes */}
+            {/* New Onboarding Flow Routes - Strictly Protected */}
             <Route path="/setup-business" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerBusinessConfig /></ProtectedRoute>} />
             <Route path="/verify-documents" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><DocumentVerification /></ProtectedRoute>} />
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +27,7 @@ const CleanerRegistration: React.FC = () => {
         if (isLoginMode) {
             const existingCleaner = cleaners.find(c => c.email.toLowerCase() === formData.email.toLowerCase());
             if (existingCleaner) {
+                // To ensure "every login requires a code", we force a resend/new code here
                 await resendCleanerCode(existingCleaner.id);
                 navigate(`/verify?id=${existingCleaner.id}`);
             } else {
@@ -63,7 +65,7 @@ const CleanerRegistration: React.FC = () => {
               {isLoginMode ? 'Acessar Painel' : 'Cadastro de House Cleaner'}
            </h2>
            <p className="text-slate-400 mt-2 relative z-10">
-              {isLoginMode ? 'Entre com seu e-mail cadastrado' : 'Junte-se à maior rede de limpeza brasileira'}
+              {isLoginMode ? 'Entre com seu e-mail cadastrado para receber seu código' : 'Junte-se à maior rede de limpeza brasileira'}
            </p>
         </div>
 

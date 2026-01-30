@@ -43,6 +43,7 @@ interface AppContextType {
   supportRequests: SupportRequest[];
   bonusCampaigns: BonusCampaign[];
   userRole: UserRole;
+  authenticatedCleanerId: string | null;
   pendingClientCode: string | null;
   pendingClientEmail: string | null;
   setUserRole: (role: UserRole) => void;
@@ -52,6 +53,7 @@ interface AppContextType {
   resendCleanerCode: (cleanerId: string) => Promise<void>;
   resendClientCode: () => Promise<void>;
   registerClient: (client: Partial<ClientProfile>) => void;
+  logoutCleaner: () => void;
   verifyUserEmail: (token: string) => boolean;
   verifyCleaner: (id: string) => void;
   rejectCleaner: (id: string) => void;
@@ -86,6 +88,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
   const [bonusCampaigns, setBonusCampaigns] = useState<BonusCampaign[]>([]);
   const [userRole, setUserRole] = useState<UserRole>(UserRole.CLIENT);
+  const [authenticatedCleanerId, setAuthenticatedCleanerId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [lastEmail, setLastEmail] = useState<EmailNotification | null>(null);
   const [pendingClientCode, setPendingClientCode] = useState<string | null>(null);
@@ -108,6 +111,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     setPendingClientCode(localStorage.getItem('bc_pending_code'));
     setPendingClientEmail(localStorage.getItem('bc_pending_email'));
+    setAuthenticatedCleanerId(localStorage.getItem('bc_auth_cleaner_id'));
   }, []);
 
   useEffect(() => { localStorage.setItem('bc_cleaners', JSON.stringify(cleaners)); }, [cleaners]);
@@ -126,6 +130,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if(pendingClientEmail) localStorage.setItem('bc_pending_email', pendingClientEmail);
     else localStorage.removeItem('bc_pending_email');
   }, [pendingClientEmail]);
+
+  useEffect(() => {
+    if(authenticatedCleanerId) localStorage.setItem('bc_auth_cleaner_id', authenticatedCleanerId);
+    else localStorage.removeItem('bc_auth_cleaner_id');
+  }, [authenticatedCleanerId]);
 
   const requestVerificationEmail = async (to: string, lang: 'en' | 'pt') => {
     try {
@@ -183,11 +192,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const isCodeValid = cleaner.verificationCode === code && (cleaner.verificationCodeExpires || 0) > Date.now();
 
     if (isCodeValid) {
+      setAuthenticatedCleanerId(cleanerId);
+      setUserRole(UserRole.CLEANER);
       setCleaners(prev => prev.map(c => 
         c.id === cleanerId ? { 
           ...c, 
           emailVerified: true, 
-          status: CleanerStatus.BUSINESS_PENDING, // Next step in Flow 2
+          status: c.status === CleanerStatus.EMAIL_PENDING ? CleanerStatus.BUSINESS_PENDING : c.status,
           verificationCode: undefined,
           verificationCodeExpires: undefined
         } : c
@@ -195,6 +206,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     }
     return false;
+  };
+
+  const logoutCleaner = () => {
+    setAuthenticatedCleanerId(null);
+    setUserRole(UserRole.CLIENT);
   };
 
   const resendCleanerCode = async (cleanerId: string) => {
@@ -265,8 +281,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider value={{ 
       cleaners, clients, leads, feedPosts, supportRequests, bonusCampaigns, userRole, setUserRole, 
-      pendingClientCode, pendingClientEmail,
-      registerCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode, resendClientCode, registerClient, verifyUserEmail, verifyCleaner, rejectCleaner, deleteCleaner,
+      authenticatedCleanerId, pendingClientCode, pendingClientEmail,
+      registerCleaner, updateCleanerProfile, verifyCleanerCode, logoutCleaner, resendCleanerCode, resendClientCode, registerClient, verifyUserEmail, verifyCleaner, rejectCleaner, deleteCleaner,
       activateSubscription, addCleanerPoints, createBonusCampaign, deleteBonusCampaign, searchCleaners, createLead, deleteLead, acceptLead, 
       createFeedPost, deleteFeedPost, createSupportRequest, updateSupportStatus, 
       addPortfolioItem, updatePortfolioStatus,
