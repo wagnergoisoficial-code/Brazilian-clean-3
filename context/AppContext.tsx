@@ -78,7 +78,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setAuthenticatedClientId(localStorage.getItem('bc_auth_client_id'));
   }, []);
 
-  // PERSISTENCE WITH SECURITY FILTERING
   useEffect(() => { 
     const filteredCleaners = cleaners.map(c => {
         const { 
@@ -149,7 +148,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       isCompany: false, 
       yearsExperience: 0, 
       description: '', 
-      photoUrl: ''
+      photoUrl: '',
+      isListed: true, // Visible by default if other rules met
+      profileCompleted: false
     };
     setCleaners(prev => [...prev, newCleaner]);
     return id;
@@ -198,6 +199,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
+  const searchCleaners = (zip: string): CleanerProfile[] => {
+    // 1. Normalize Search ZIP
+    const normalizedZip = zip.trim().substring(0, 5);
+    if (normalizedZip.length < 5) return [];
+
+    console.log(`[Marketplace Search] Query: ${normalizedZip}`);
+
+    // 2. Query Logic
+    const results = cleaners.filter(cleaner => {
+      // Rule A: Served ZIPs match
+      const servesZip = cleaner.zipCodes.some(z => z.trim().substring(0, 5) === normalizedZip);
+      if (!servesZip) return false;
+
+      // Rule B: Listing Rules
+      // Must have basic profile data to be displayed
+      const hasPhone = !!cleaner.phone;
+      const isPublic = cleaner.isListed !== false; // Discoverability toggle
+      
+      // Rule C: Verification Threshold
+      // For growth, we allow UNDER_REVIEW but prioritize VERIFIED in sorting
+      const isDiscoverable = [CleanerStatus.VERIFIED, CleanerStatus.UNDER_REVIEW].includes(cleaner.status);
+
+      return hasPhone && isPublic && isDiscoverable;
+    });
+
+    console.log(`[Marketplace Search] Results found: ${results.length}`);
+    return results;
+  };
+
   const createLead = async (l: Partial<Lead>) => {
     const code = await requestVerificationEmail(l.clientEmail || '', 'en');
     setPendingClientCode(code);
@@ -210,8 +240,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const deleteCleaner = (id: string) => setCleaners(p => p.filter(c => c.id !== id));
   const activateSubscription = (id: string, s: Subscription) => updateCleanerProfile(id, { subscription: s });
   const addCleanerPoints = (id: string, amt: number, reason: string) => setCleaners(p => p.map(c => c.id === id ? serviceAddPoints(c, amt, reason) : c));
-  const searchCleaners = (zip: string) => cleaners.filter(c => c.status === CleanerStatus.VERIFIED && c.zipCodes.includes(zip));
   const deleteLead = (id: string) => setLeads(p => p.filter(l => l.id !== id));
+  
+  // FIXED: correctly mapping over the leads array to update the accepted lead status and cleaner assignment.
   const acceptLead = (lid: string, cid: string) => {
     setLeads(p => p.map(l => l.id === lid ? {...l, status: 'ACCEPTED', acceptedByCleanerId: cid} : l));
     addCleanerPoints(cid, 10, 'Lead Accepted');

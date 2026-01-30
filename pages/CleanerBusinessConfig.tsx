@@ -30,7 +30,6 @@ const CleanerBusinessConfig: React.FC = () => {
             zipCodes: (myProfile.zipCodes || []).join(', ')
         }));
     } else {
-        // Safe navigation if no session found
         navigate('/join');
     }
   }, [myProfile, navigate]);
@@ -39,15 +38,14 @@ const CleanerBusinessConfig: React.FC = () => {
     e.preventDefault();
     if (!cleanerId) return;
 
-    // Sequential Validation
     if (!formData.companyName && formData.isCompany) {
         alert("Por favor, insira o nome da sua empresa.");
         return;
     }
 
-    const zips = formData.zipCodes.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    const zips = formData.zipCodes.split(',').map(s => s.trim().substring(0, 5)).filter(s => s.length === 5);
     if (zips.length === 0) {
-        alert("Por favor, insira ao menos um CEP de atendimento.");
+        alert("Por favor, insira ao menos um CEP válido de 5 dígitos.");
         return;
     }
 
@@ -58,7 +56,8 @@ const CleanerBusinessConfig: React.FC = () => {
         city: formData.city,
         state: formData.state,
         zipCodes: zips,
-        status: CleanerStatus.DOCUMENTS_PENDING // Move to Step 3
+        isListed: true,
+        status: CleanerStatus.DOCUMENTS_PENDING 
     });
 
     navigate(`/verify-documents?id=${cleanerId}`);

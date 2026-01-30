@@ -155,6 +155,9 @@ export interface CleanerProfile {
   photoUrl: string;
   galleryUrls: string[];
   portfolio: PortfolioItem[];
+  // Marketplace discoverability
+  isListed: boolean;
+  profileCompleted: boolean;
   // Extended Verification Assets
   documentFrontUrl?: string;
   documentBackUrl?: string;
