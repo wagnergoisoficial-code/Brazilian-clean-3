@@ -115,6 +115,9 @@ export interface AiVerificationResult {
   summary: string;
   recommended_action: "Approve" | "Review" | "Reject";
   timestamp: string;
+  // User-friendly feedback fields
+  user_reason_pt?: string;
+  user_instruction_pt?: string;
 }
 
 export interface PortfolioItem {

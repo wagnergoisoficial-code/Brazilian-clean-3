@@ -104,13 +104,26 @@ export const performIdentityVerification = async (
             - DOCUMENT MATCH: Compare the face printed on (1) Document Front with the person in (3) and (4).
             - NAME VALIDATION: Extract the name from (1) Document Front. Does it match "${userProfile.fullName}"?
             - CONTEXTUAL CHECK: In (4) Selfie with Doc, is the person holding the same physical document shown in (1) and (2)?
-            - INTEGRITY CHECK: Detect any signs of digital manipulation, "photo of a photo", or generic stock images.
+            - INTEGRITY CHECK: Detect any signs of digital manipulation.
             
-            RESPONSE RULES:
-            - If any face mismatch is found: "LIKELY_FRAUD".
-            - If names are completely different: "LIKELY_FRAUD".
-            - If assets are real but quality prevents 100% match: "NEEDS_MANUAL_REVIEW".
-            - If all faces match, names match, and document is held correctly: "LIKELY_VALID".
+            USER FEEDBACK GENERATION (CRITICAL):
+            If the verification status is NOT "LIKELY_VALID", you must provide a reason and an instruction in Portuguese following these templates exactly:
+            
+            Selfie Clarity Issue:
+            Reason: "Não conseguimos identificar seu rosto com clareza."
+            Instruction: "Aproxime mais o rosto da câmera e tente novamente."
+            
+            Document Clarity Issue:
+            Reason: "Não foi possível ler as informações do documento."
+            Instruction: "Tire uma nova foto em um local bem iluminado, sem reflexos."
+            
+            Selfie with Document Issue:
+            Reason: "O documento não está totalmente visível na selfie."
+            Instruction: "Segure o documento próximo ao rosto, com a foto aparecendo."
+            
+            Face Mismatch/Accessories:
+            Reason: "Não conseguimos confirmar que a pessoa da foto é a mesma do documento."
+            Instruction: "Tente novamente sem acessórios (óculos, chapéus) e garanta boa iluminação."
             
             Return a JSON object:
             {
@@ -118,7 +131,9 @@ export const performIdentityVerification = async (
               "confidence_score": number (0 to 1),
               "detected_issues": string[],
               "summary": string,
-              "recommended_action": "Approve" | "Review" | "Reject"
+              "recommended_action": "Approve" | "Review" | "Reject",
+              "user_reason_pt": "String with the Portuguese reason",
+              "user_instruction_pt": "String with the Portuguese instruction"
             }` 
           },
           { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(assets.docFront) } },
@@ -136,9 +151,11 @@ export const performIdentityVerification = async (
             confidence_score: { type: Type.NUMBER },
             detected_issues: { type: Type.ARRAY, items: { type: Type.STRING } },
             summary: { type: Type.STRING },
-            recommended_action: { type: Type.STRING }
+            recommended_action: { type: Type.STRING },
+            user_reason_pt: { type: Type.STRING },
+            user_instruction_pt: { type: Type.STRING }
           },
-          required: ["verification_status", "confidence_score", "detected_issues", "summary", "recommended_action"]
+          required: ["verification_status", "confidence_score", "detected_issues", "summary", "recommended_action", "user_reason_pt", "user_instruction_pt"]
         }
       }
     });
@@ -156,7 +173,9 @@ export const performIdentityVerification = async (
       detected_issues: ["AI processing error"],
       summary: "Manual review required due to technical processing timeout.",
       recommended_action: "Review",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      user_reason_pt: "Ocorreu um erro técnico durante a análise automática.",
+      user_instruction_pt: "Tente novamente em alguns instantes ou entre em contato com o suporte."
     };
   }
 };

@@ -19,7 +19,7 @@ const LevelBadge: React.FC<{ level: CleanerLevel; size?: 'sm' | 'lg' }> = ({ lev
 };
 
 const CleanerDashboard: React.FC = () => {
-  const { cleaners, authenticatedCleanerId, logout } = useAppContext();
+  const { cleaners, authenticatedCleanerId, logout, updateCleanerProfile } = useAppContext();
   const navigate = useNavigate();
   const myProfile = cleaners.find(c => c.id === authenticatedCleanerId);
 
@@ -31,17 +31,35 @@ const CleanerDashboard: React.FC = () => {
 
   const isVerified = myProfile.status === CleanerStatus.VERIFIED;
   const isUnderReview = myProfile.status === CleanerStatus.UNDER_REVIEW;
+  
+  // High-Security Marketplace Correction Logic
+  const needsCorrection = isUnderReview && 
+                         myProfile.aiVerificationResult && 
+                         myProfile.aiVerificationResult.verification_status !== 'LIKELY_VALID';
 
   const steps = [
     { id: 'personal', label: 'Informações Pessoais', completed: !!myProfile.phone, path: '/setup-personal' },
     { id: 'professional', label: 'Informações Profissionais', completed: !!myProfile.yearsExperience, path: '/setup-business' },
     { id: 'area', label: 'Área de Atendimento', completed: (myProfile.zipCodes?.length || 0) > 0, path: '/setup-area' },
-    { id: 'docs', label: 'Verificação de Documentos', completed: !!myProfile.documentUrl, path: '/verify-documents' },
+    { id: 'docs', label: 'Verificação de Documentos', completed: !!myProfile.documentUrl || !!myProfile.documentFrontUrl, path: '/verify-documents' },
   ];
 
   const currentStepIndex = steps.findIndex(s => !s.completed);
   const activeStepIndex = currentStepIndex === -1 ? steps.length : currentStepIndex;
   const progress = Math.round((steps.filter(s => s.completed).length / steps.length) * 100);
+
+  const handleCorrection = () => {
+      if (!myProfile) return;
+      // Reset document progress but keep other info
+      updateCleanerProfile(myProfile.id, {
+          status: CleanerStatus.DOCUMENTS_PENDING,
+          documentFrontUrl: undefined,
+          documentBackUrl: undefined,
+          facePhotoUrl: undefined,
+          selfieWithDocUrl: undefined
+      });
+      navigate(`/verify-documents?id=${myProfile.id}`);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -88,8 +106,33 @@ const CleanerDashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+        ) : needsCorrection ? (
+            <div className="bg-white border-2 border-orange-200 p-10 rounded-3xl shadow-xl animate-fade-in">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Ação necessária</h2>
+                        <p className="text-orange-600 font-bold text-sm uppercase tracking-widest">Verificação não aprovada automaticamente</p>
+                    </div>
+                </div>
+                
+                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 mb-8 space-y-2">
+                    <p className="text-slate-900 font-bold">{myProfile.aiVerificationResult?.user_reason_pt}</p>
+                    <p className="text-slate-600 text-sm leading-relaxed">{myProfile.aiVerificationResult?.user_instruction_pt}</p>
+                </div>
+
+                <button 
+                    onClick={handleCorrection}
+                    className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-black transition flex items-center justify-center gap-3"
+                >
+                    Corrigir Documentos e Reenviar
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
         ) : isUnderReview ? (
-            <div className="bg-slate-900 p-10 rounded-3xl text-white shadow-2xl relative overflow-hidden">
+            <div className="bg-slate-900 p-10 rounded-3xl text-white shadow-2xl relative overflow-hidden animate-fade-in">
                 <div className="absolute top-0 right-0 p-10 opacity-10">
                     <svg className="w-32 h-32 animate-spin-slow" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
                 </div>
