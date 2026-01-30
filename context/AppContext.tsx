@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CleanerProfile, CleanerStatus, UserRole, Lead, FeedPost, ClientProfile, SupportRequest, SupportStatus, SupportType, Subscription, SubscriptionPlan, PaymentMethodType, Discount, CleanerLevel, BonusCampaign, PortfolioItem, EmailNotification } from '../types';
 import { addPoints as serviceAddPoints } from '../services/meritService';
+import { canCleanerServeZip } from '../services/locationService';
 
 interface AppContextType {
   cleaners: CleanerProfile[];
@@ -150,7 +151,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       phone: data.phone || '',
       city: data.city || '',
       state: data.state || '',
-      zipCodes: data.zipCodes || [],
+      baseZip: data.baseZip || '',
+      serviceRadius: 10,
+      zipCodes: [],
       status: CleanerStatus.EMAIL_PENDING,
       rating: 0, 
       reviewCount: 0,
@@ -245,15 +248,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const searchCleaners = (zip: string, serviceKey?: string): CleanerProfile[] => {
-    const normalizedZip = zip.trim().substring(0, 5);
-    if (normalizedZip.length < 5) return [];
+    const targetZip = zip.trim().substring(0, 5);
+    if (targetZip.length < 5) return [];
 
     return cleaners.filter(cleaner => {
-      const servesZip = cleaner.zipCodes.some(z => z.trim().substring(0, 5) === normalizedZip);
-      if (!servesZip) return false;
+      // 1. Geolocation Match (Logic source: locationService)
+      const locationMatch = canCleanerServeZip(cleaner, targetZip);
+      if (!locationMatch) return false;
 
+      // 2. Service Match
       if (serviceKey && serviceKey !== 'All' && !cleaner.services.includes(serviceKey)) return false;
 
+      // 3. Business Rules
       const hasPhone = !!cleaner.phone;
       const isPublic = cleaner.isListed !== false;
       const isDiscoverable = [CleanerStatus.VERIFIED, CleanerStatus.UNDER_REVIEW].includes(cleaner.status);

@@ -64,6 +64,8 @@ const CleanerDashboard: React.FC = () => {
             isCompany: myProfile.isCompany,
             city: myProfile.city,
             state: myProfile.state,
+            baseZip: myProfile.baseZip,
+            serviceRadius: myProfile.serviceRadius,
             zipCodes: myProfile.zipCodes,
             phone: myProfile.phone,
             photoUrl: myProfile.photoUrl,
@@ -111,7 +113,7 @@ const CleanerDashboard: React.FC = () => {
     { id: 'personal', label: 'Cadastro Inicial', completed: !!myProfile.phone, path: '/setup-personal' },
     { id: 'professional', label: 'Perfil de Negócio', completed: !!myProfile.yearsExperience, path: '/setup-business' },
     { id: 'services', label: 'Seleção de Serviços', completed: (myProfile.services?.length || 0) > 0, path: '/setup-services' },
-    { id: 'area', label: 'Área de Atendimento', completed: (myProfile.zipCodes?.length || 0) > 0, path: '/setup-area' },
+    { id: 'area', label: 'Área de Atendimento', completed: !!myProfile.baseZip, path: '/setup-area' },
     { id: 'docs', label: 'Bio-Verificação', completed: !!myProfile.documentFrontUrl, path: '/verify-documents' },
   ];
 
@@ -192,7 +194,7 @@ const CleanerDashboard: React.FC = () => {
                 <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">{activeTab.toUpperCase()}</h2>
                 {isUnderReview && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">Em Análise pela Luna AI</span>}
             </div>
-            {activeTab !== 'overview' && (
+            {activeTab !== 'overview' && activeTab !== 'leads' && (
                 <button onClick={handleUpdate} disabled={saveStatus === 'saving'} className={`px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'}`}>
                     {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'saved' ? 'Salvo ✓' : 'Salvar Alterações'}
                 </button>
@@ -264,6 +266,51 @@ const CleanerDashboard: React.FC = () => {
                         </button>
                     );
                 })}
+            </div>
+        )}
+
+        {activeTab === 'area' && (
+            <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 space-y-10 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase text-slate-400">ZIP Code Base</label>
+                        <input 
+                            className="w-full bg-slate-50 p-4 rounded-xl outline-none border-2 border-slate-50 focus:border-blue-500 font-bold text-2xl" 
+                            value={editData.baseZip} 
+                            maxLength={5}
+                            onChange={e => setEditData({...editData, baseZip: e.target.value.replace(/\D/g,'')})} 
+                        />
+                    </div>
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Raio (Milhas)</label>
+                        <select 
+                            className="w-full bg-slate-50 p-4 rounded-xl outline-none border-2 border-slate-50 font-bold"
+                            value={editData.serviceRadius}
+                            onChange={e => setEditData({...editData, serviceRadius: parseInt(e.target.value)})}
+                        >
+                            <option value={5}>5 Milhas</option>
+                            <option value={10}>10 Milhas</option>
+                            <option value={15}>15 Milhas</option>
+                            <option value={25}>25 Milhas</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Lista Manual de ZIPs</label>
+                    <div className="flex flex-wrap gap-2">
+                        {editData.zipCodes?.map(z => (
+                            <span key={z} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-2">
+                                {z}
+                                <button onClick={() => setEditData({...editData, zipCodes: (editData.zipCodes || []).filter(item => item !== z)})} className="hover:text-red-400">✕</button>
+                            </span>
+                        ))}
+                        <button onClick={() => {
+                            const z = prompt("Digite o ZIP Code:");
+                            if(z && z.length === 5) setEditData({...editData, zipCodes: [...(editData.zipCodes || []), z]});
+                        }} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold text-xs border border-blue-100 hover:bg-blue-100 transition">＋ Adicionar ZIP</button>
+                    </div>
+                </div>
             </div>
         )}
 

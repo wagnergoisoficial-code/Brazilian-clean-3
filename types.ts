@@ -144,7 +144,9 @@ export interface CleanerProfile {
   isCompany: boolean;
   yearsExperience: number;
   services: string[]; // Normalized keys like "deep_cleaning"
-  zipCodes: string[];
+  baseZip: string; // The primary location
+  serviceRadius: number; // Radius in miles (5, 10, 15, 25)
+  zipCodes: string[]; // Manual additional ZIPs
   description: string;
   status: CleanerStatus;
   rating: number;
