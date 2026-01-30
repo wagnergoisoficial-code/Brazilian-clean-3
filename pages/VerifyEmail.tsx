@@ -83,19 +83,19 @@ const VerifyEmail: React.FC = () => {
     if (isClientFlow) {
       navigate('/');
     } else {
-      // Flow 2: Redirect to Business Configuration Step
-      navigate(`/setup-business?id=${cleanerId}`);
+      // PHASE 2 COMPLETE -> Redirect to Dashboard Checklist
+      navigate(`/dashboard`);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
-       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
+       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden border border-slate-100">
           
           {status === 'success' ? (
               <div key="view-success" className="animate-fade-in mt-4">
-                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                 <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-12 h-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                  </div>
                  <h2 className="text-3xl font-black text-gray-900 mb-2">
                     {isClientFlow ? 'Confirmed!' : 'Ativado!'}
@@ -103,10 +103,10 @@ const VerifyEmail: React.FC = () => {
                  <p className="text-gray-600 mb-8 leading-relaxed">
                     {isClientFlow 
                         ? 'Your request has been broadcasted to our verified professionals.' 
-                        : 'Excelente! Sua conta foi verificada. Agora complete seu cadastro profissional.'}
+                        : 'Excelente! Sua conta foi verificada com sucesso. Vamos agora configurar o seu perfil.'}
                  </p>
-                 <button onClick={handleNextAction} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition shadow-lg">
-                    {isClientFlow ? 'Back to Home' : 'Configurar Perfil Profissional'}
+                 <button onClick={handleNextAction} className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-black transition shadow-xl uppercase tracking-widest text-sm">
+                    {isClientFlow ? 'Back to Home' : 'Acessar meu Painel'}
                  </button>
               </div>
           ) : (
@@ -119,8 +119,7 @@ const VerifyEmail: React.FC = () => {
                  </h2>
                  <p className="text-gray-500 mb-8 text-sm leading-relaxed">
                     {isClientFlow ? "We've sent a verification code to:" : "Enviamos um código de verificação para:"}<br/>
-                    <span className="font-bold text-slate-800">{isClientFlow ? (pendingClientEmail || 'your email') : (cleaner?.email || 'seu e-mail')}</span>
-                    <br/>{isClientFlow ? "Enter the code below to confirm." : "Digite o código abaixo para confirmar seu cadastro."}
+                    <span className="font-bold text-slate-800 underline decoration-blue-200 underline-offset-4">{isClientFlow ? (pendingClientEmail || 'your email') : (cleaner?.email || 'seu e-mail')}</span>
                  </p>
 
                  <form onSubmit={handleSubmitCode} className="space-y-6">
@@ -133,7 +132,7 @@ const VerifyEmail: React.FC = () => {
                             disabled={status === 'verifying'}
                             value={code}
                             onChange={(e) => setCode(e.target.value.replace(/\D/g,''))}
-                            className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-2xl text-center text-3xl font-black tracking-widest focus:border-blue-500 outline-none transition disabled:opacity-50"
+                            className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-2xl text-center text-4xl font-black tracking-[0.5em] focus:border-blue-500 outline-none transition disabled:opacity-50"
                         />
                         {status === 'error' && (
                             <p className="text-red-500 text-xs font-bold mt-3 animate-fade-in">{errorMessage}</p>
@@ -143,7 +142,7 @@ const VerifyEmail: React.FC = () => {
                     <button 
                         type="submit" 
                         disabled={code.length !== 6 || status === 'verifying'}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 uppercase tracking-widest text-sm"
                     >
                         {status === 'verifying' ? (
                             <span className="flex items-center gap-2">
@@ -158,13 +157,13 @@ const VerifyEmail: React.FC = () => {
                  </form>
 
                  <div className="mt-8 pt-6 border-t border-slate-100">
-                    <p className="text-xs text-gray-400 mb-3">{isClientFlow ? "Didn't receive the code?" : "Não recebeu o código?"}</p>
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-widest">{isClientFlow ? "Didn't receive the code?" : "Não recebeu o código?"}</p>
                     <button 
                         onClick={handleResend}
                         disabled={isResending || status === 'verifying'}
                         className={`text-sm font-bold text-blue-600 hover:text-blue-800 underline decoration-2 underline-offset-4 ${isResending ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {isResending ? (isClientFlow ? 'Requesting...' : 'Solicitando...') : (isClientFlow ? 'Resend verification code' : 'Reenviar código de verificação')}
+                        {isResending ? (isClientFlow ? 'Requesting...' : 'Solicitando...') : (isClientFlow ? 'Resend code' : 'Reenviar código')}
                     </button>
                  </div>
               </div>

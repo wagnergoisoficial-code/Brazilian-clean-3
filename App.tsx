@@ -13,17 +13,18 @@ import VerifyEmail from './pages/VerifyEmail';
 import Support from './pages/Support';
 import BrianAI from './components/BrianAI';
 import MockEmailService from './components/MockEmailService';
+import CleanerPersonalInfo from './pages/CleanerPersonalInfo';
 import CleanerBusinessConfig from './pages/CleanerBusinessConfig';
+import CleanerServiceArea from './pages/CleanerServiceArea';
 import DocumentVerification from './pages/DocumentVerification';
+import ClientSettings from './pages/ClientSettings';
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
-    const { userRole, authenticatedCleanerId } = useAppContext();
+    const { userRole, authenticatedCleanerId, authenticatedClientId } = useAppContext();
     
-    // Strict logic: If cleaner role is required, we MUST have a verified cleaner ID (session)
-    if (allowedRole === UserRole.CLEANER && !authenticatedCleanerId) {
-        return <Navigate to="/join" replace />;
-    }
+    if (allowedRole === UserRole.CLEANER && !authenticatedCleanerId) return <Navigate to="/join" replace />;
+    if (allowedRole === UserRole.CLIENT && !authenticatedClientId && window.location.hash.includes('settings')) return <Navigate to="/" replace />;
 
     return userRole === allowedRole ? children : <Navigate to="/" replace />;
 };
@@ -38,9 +39,14 @@ const AppRoutes = () => {
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/support" element={<Support />} />
             
-            {/* New Onboarding Flow Routes - Strictly Protected */}
+            {/* House Cleaner Onboarding Sequence */}
+            <Route path="/setup-personal" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerPersonalInfo /></ProtectedRoute>} />
             <Route path="/setup-business" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerBusinessConfig /></ProtectedRoute>} />
+            <Route path="/setup-area" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerServiceArea /></ProtectedRoute>} />
             <Route path="/verify-documents" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><DocumentVerification /></ProtectedRoute>} />
+            
+            {/* Account Management */}
+            <Route path="/settings" element={<ProtectedRoute allowedRole={UserRole.CLIENT}><ClientSettings /></ProtectedRoute>} />
 
             <Route path="/admin" element={<ProtectedRoute allowedRole={UserRole.ADMIN}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerDashboard /></ProtectedRoute>} />
