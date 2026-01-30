@@ -151,8 +151,11 @@ export interface CleanerProfile {
   photoUrl: string;
   galleryUrls: string[];
   portfolio: PortfolioItem[];
-  documentUrl?: string;
-  selfieUrl?: string;
+  // Extended Verification Assets
+  documentFrontUrl?: string;
+  documentBackUrl?: string;
+  facePhotoUrl?: string;
+  selfieWithDocUrl?: string;
   aiVerificationResult?: AiVerificationResult;
   subscription?: Subscription;
   points: number;

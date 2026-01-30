@@ -71,9 +71,15 @@ export const generateBrianResponse = async (
   }
 };
 
+export interface VerificationAssets {
+  docFront: string;
+  docBack: string;
+  facePhoto: string;
+  selfieWithDoc: string;
+}
+
 export const performIdentityVerification = async (
-  docUrl: string, 
-  selfieUrl: string,
+  assets: VerificationAssets,
   userProfile: { fullName: string; email: string }
 ): Promise<AiVerificationResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
@@ -85,23 +91,26 @@ export const performIdentityVerification = async (
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          { text: `IDENTITY VERIFICATION PROTOCOL - PRODUCTION CRITICAL
+          { text: `IDENTITY VERIFICATION PROTOCOL - ENTERPRISE SECURITY LEVEL
             
-            Compare these two images:
-            1. Government-issued ID (DL, Passport, or RG).
-            2. Real-time selfie of the professional.
+            Compare these four images to verify the identity of the professional "${userProfile.fullName}":
+            1. Official Document (FRONT)
+            2. Official Document (BACK)
+            3. Professional Face Photo (clear, frontal)
+            4. Selfie holding the document next to the face
             
             STRICT VERIFICATION STEPS:
-            - FACE COMPARISON: Is the face in the selfie the SAME as the face printed on the ID? Analyze features, age, and proportions.
-            - NAME VALIDATION: Does the name printed on the document match "${userProfile.fullName}"? If it's a completely different name (e.g., "John Doe" on ID vs "Maria Silva" on profile), mark as LIKELY_FRAUD.
-            - LIVENESS/ANTI-SPOOF: Is the second image a real selfie or a photo of a photo/screen? Detect any digital manipulation.
-            - DOCUMENT AUTHENTICITY: Does the ID look like a real physical document or a downloaded/generic image?
+            - FACE CONSISTENCY: Compare the face in (3) Professional Photo and (4) Selfie. Are they the same person?
+            - DOCUMENT MATCH: Compare the face printed on (1) Document Front with the person in (3) and (4).
+            - NAME VALIDATION: Extract the name from (1) Document Front. Does it match "${userProfile.fullName}"?
+            - CONTEXTUAL CHECK: In (4) Selfie with Doc, is the person holding the same physical document shown in (1) and (2)?
+            - INTEGRITY CHECK: Detect any signs of digital manipulation, "photo of a photo", or generic stock images.
             
             RESPONSE RULES:
-            - If both photos are clearly different people: "LIKELY_FRAUD".
+            - If any face mismatch is found: "LIKELY_FRAUD".
             - If names are completely different: "LIKELY_FRAUD".
-            - If photos are blurry but potentially match: "NEEDS_MANUAL_REVIEW".
-            - If faces match and name matches: "LIKELY_VALID".
+            - If assets are real but quality prevents 100% match: "NEEDS_MANUAL_REVIEW".
+            - If all faces match, names match, and document is held correctly: "LIKELY_VALID".
             
             Return a JSON object:
             {
@@ -112,8 +121,10 @@ export const performIdentityVerification = async (
               "recommended_action": "Approve" | "Review" | "Reject"
             }` 
           },
-          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(docUrl) } },
-          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(selfieUrl) } }
+          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(assets.docFront) } },
+          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(assets.docBack) } },
+          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(assets.facePhoto) } },
+          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(assets.selfieWithDoc) } }
         ]
       },
       config: {
@@ -142,8 +153,8 @@ export const performIdentityVerification = async (
     return {
       verification_status: "NEEDS_MANUAL_REVIEW",
       confidence_score: 0.5,
-      detected_issues: ["AI system timeout"],
-      summary: "Manual verification required due to processing lag.",
+      detected_issues: ["AI processing error"],
+      summary: "Manual review required due to technical processing timeout.",
       recommended_action: "Review",
       timestamp: new Date().toISOString()
     };

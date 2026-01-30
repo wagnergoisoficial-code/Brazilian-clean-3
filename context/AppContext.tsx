@@ -77,12 +77,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setAuthenticatedClientId(localStorage.getItem('bc_auth_client_id'));
   }, []);
 
-  useEffect(() => { localStorage.setItem('bc_cleaners', JSON.stringify(cleaners)); }, [cleaners]);
+  // PERSISTENCE WITH SECURITY FILTERING (Do NOT store large verification images in localStorage)
+  useEffect(() => { 
+    const filteredCleaners = cleaners.map(c => {
+        const { documentFrontUrl, documentBackUrl, facePhotoUrl, selfieWithDocUrl, ...rest } = c;
+        return rest;
+    });
+    localStorage.setItem('bc_cleaners', JSON.stringify(filteredCleaners)); 
+  }, [cleaners]);
+
   useEffect(() => { localStorage.setItem('bc_clients', JSON.stringify(clients)); }, [clients]);
+  
   useEffect(() => { 
     if(authenticatedCleanerId) localStorage.setItem('bc_auth_cleaner_id', authenticatedCleanerId);
     else localStorage.removeItem('bc_auth_cleaner_id');
   }, [authenticatedCleanerId]);
+
   useEffect(() => { 
     if(authenticatedClientId) localStorage.setItem('bc_auth_client_id', authenticatedClientId);
     else localStorage.removeItem('bc_auth_client_id');
