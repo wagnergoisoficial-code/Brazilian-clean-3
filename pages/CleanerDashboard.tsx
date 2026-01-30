@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { CleanerStatus, PaymentMethodType, SubscriptionPlan, CleanerLevel } from '../types';
-import { processSubscriptionPayment, calculateSubscriptionPrice } from '../services/mockPaymentService';
+import { processSubscriptionPayment } from '../services/mockPaymentService';
 import { getNextLevelThreshold } from '../services/meritService';
 import { useNavigate } from 'react-router-dom';
 
+// Component for rendering a badge based on the cleaner's level
 const LevelBadge: React.FC<{ level: CleanerLevel; size?: 'sm' | 'lg' }> = ({ level, size = 'sm' }) => {
     const styles = {
         [CleanerLevel.BRONZE]: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', icon: '🥉' },
@@ -21,6 +21,7 @@ const LevelBadge: React.FC<{ level: CleanerLevel; size?: 'sm' | 'lg' }> = ({ lev
     );
 };
 
+// Modal component for uploading portfolio work (before/after photos)
 const PortfolioUploadModal: React.FC<{ onClose: () => void; onUpload: (data: any) => void }> = ({ onClose, onUpload }) => {
     const [serviceType, setServiceType] = useState('Deep Clean');
     const [beforeImg, setBeforeImg] = useState('');
@@ -40,7 +41,7 @@ const PortfolioUploadModal: React.FC<{ onClose: () => void; onUpload: (data: any
         e.preventDefault();
         if (!beforeImg || !afterImg) return alert('Please upload both photos');
         setIsUploading(true);
-        // Simulate network
+        // Simulate network delay and compression
         await new Promise(r => setTimeout(r, 1000));
         await onUpload({ serviceType, beforeImage: beforeImg, afterImage: afterImg, description: desc });
         setIsUploading(false);
@@ -68,14 +69,14 @@ const PortfolioUploadModal: React.FC<{ onClose: () => void; onUpload: (data: any
                         <div>
                             <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Before Photo</label>
                             <div className="h-32 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative">
-                                {beforeImg ? <img src={beforeImg} className="w-full h-full object-cover" /> : <span className="text-xs text-gray-400">Upload</span>}
+                                {beforeImg ? <img src={beforeImg} className="w-full h-full object-cover" alt="Before" /> : <span className="text-xs text-gray-400">Upload</span>}
                                 <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => handleFile(e, setBeforeImg)} />
                             </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase text-gray-500 mb-1">After Photo</label>
                             <div className="h-32 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative">
-                                {afterImg ? <img src={afterImg} className="w-full h-full object-cover" /> : <span className="text-xs text-gray-400">Upload</span>}
+                                {afterImg ? <img src={afterImg} className="w-full h-full object-cover" alt="After" /> : <span className="text-xs text-gray-400">Upload</span>}
                                 <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => handleFile(e, setAfterImg)} />
                             </div>
                         </div>
@@ -93,211 +94,212 @@ const PortfolioUploadModal: React.FC<{ onClose: () => void; onUpload: (data: any
     );
 };
 
+// Main dashboard component for cleaners to manage their profile and leads
 const CleanerDashboard: React.FC = () => {
   const { cleaners, leads, acceptLead, setIsChatOpen, activateSubscription, addPortfolioItem } = useAppContext();
   const navigate = useNavigate();
-  const myProfile = cleaners[cleaners.length - 1]; 
+  
+  // Robust check for profile existence; uses the last registered cleaner as "current user" for demo purposes
+  const myProfile = cleaners.length > 0 ? cleaners[cleaners.length - 1] : null; 
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType | null>(null);
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
 
   useEffect(() => {
-    if (myProfile && myProfile.status === CleanerStatus.EMAIL_PENDING) {
+    // Flow 1 Rule: If no profile exists, immediately redirect to Registration
+    if (!myProfile) {
+        navigate('/join');
+        return;
+    }
+
+    if (myProfile.status === CleanerStatus.EMAIL_PENDING) {
         navigate(`/verify?id=${myProfile.id}`);
     }
   }, [myProfile, navigate]);
 
-  if (!myProfile) return <div className="p-20 text-center font-bold">Carregando perfil...</div>;
-
-  if (myProfile.status === CleanerStatus.EMAIL_PENDING) return null;
-
-  const priorityDelay = myProfile.level === CleanerLevel.GOLD ? 0 : myProfile.level === CleanerLevel.SILVER ? 5*60*1000 : 15*60*1000;
-  const now = Date.now();
-  const myLeads = leads.filter(l => l.status === 'OPEN' && myProfile.zipCodes.includes(l.zipCode) && (now - l.createdAt >= priorityDelay));
-  const acceptedLeads = leads.filter(l => l.acceptedByCleanerId === myProfile.id);
-
-  const plan = myProfile.subscription?.plan || SubscriptionPlan.PROMO_STARTUP;
-  const basePrice = plan === SubscriptionPlan.PROMO_STARTUP ? 180 : 260;
-  const finalPrice = calculateSubscriptionPrice(plan, myProfile.subscription?.activeDiscount);
-
-  const handlePayment = async (method: PaymentMethodType) => {
-      setIsProcessingPayment(true);
-      try {
-          const subscription = await processSubscriptionPayment(myProfile.id, method, myProfile.subscription, finalPrice);
-          activateSubscription(myProfile.id, subscription);
-      } catch (e) {
-          alert("Erro no pagamento.");
-      } finally {
-          setIsProcessingPayment(false);
-      }
-  };
-
-  if (myProfile.status === CleanerStatus.UNDER_REVIEW) {
-      return (
-        <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center">
-            <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-scale-in">
-                 <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-10 h-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                 </div>
-                 <h2 className="text-3xl font-black text-gray-900 mb-2">Análise em Curso</h2>
-                 <p className="text-gray-500 mb-8 leading-relaxed">
-                     Sua conta foi verificada por email. Agora, nossa equipe está revisando seus documentos. 
-                     Fique atento ao seu email para a aprovação final.
-                 </p>
-                 <button onClick={() => setIsChatOpen(true)} className="text-blue-600 font-bold underline decoration-2 underline-offset-4">Falar com Suporte (Luna)</button>
-            </div>
+  // Fallback loading state while navigating
+  if (!myProfile) {
+    return (
+      <div className="min-h-screen bg-teal-50 flex items-center justify-center p-4">
+        <div className="animate-pulse flex flex-col items-center">
+            <div className="w-12 h-12 bg-slate-200 rounded-full mb-4"></div>
+            <div className="h-4 w-32 bg-slate-200 rounded"></div>
         </div>
-      );
-  }
-
-  if (myProfile.status === CleanerStatus.REJECTED) {
-      return (
-        <div className="min-h-screen bg-red-50 py-12 px-4 flex items-center justify-center">
-            <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-scale-in border border-red-100">
-                 <h2 className="text-3xl font-black text-gray-900 mb-2">Verificação Recusada</h2>
-                 <button onClick={() => navigate('/join')} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition">Tentar Novamente</button>
-            </div>
-        </div>
-      );
-  }
-
-  if (myProfile.status === CleanerStatus.VERIFIED && !myProfile.subscription?.isActive) {
-      return (
-        <div className="min-h-screen bg-slate-50 py-12 px-4 font-sans">
-            <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up">
-                <div className="bg-slate-900 p-10 text-center text-white relative">
-                    <div className="inline-block bg-green-500 text-black font-black px-4 py-1.5 rounded-full text-[10px] uppercase mb-4 tracking-widest">Email & ID Verificados</div>
-                    <h1 className="text-4xl font-black mb-2">Ative seu Plano</h1>
-                    <p className="text-slate-400">Tudo pronto! Agora só falta escolher seu plano para começar a receber leads.</p>
-                </div>
-                <div className="p-10">
-                    <div className="border-4 border-green-500 rounded-3xl p-8 bg-green-50 mb-10 text-center">
-                        <span className="text-gray-400 text-xl line-through">${basePrice}</span>
-                        <div className="flex items-center justify-center gap-1 mt-1">
-                            <span className="text-2xl font-black text-green-700">$</span>
-                            <span className="text-6xl font-black text-slate-900">{finalPrice}</span>
-                            <span className="text-gray-500 self-end mb-2">/mês</span>
-                        </div>
-                        <p className="text-sm text-green-700 font-bold mt-4 uppercase tracking-widest">Primeiros 2 Meses Promocionais</p>
-                    </div>
-                    <button disabled={!selectedPaymentMethod || isProcessingPayment} onClick={() => handlePayment(selectedPaymentMethod || PaymentMethodType.CREDIT_CARD)} className="w-full bg-slate-900 hover:bg-black text-white font-black py-5 rounded-2xl shadow-xl transition disabled:opacity-50">
-                        {isProcessingPayment ? 'Processando...' : 'Ativar Minha Conta Agora 🚀'}
-                    </button>
-                    <div className="mt-4 space-y-2">
-                         <button onClick={() => setSelectedPaymentMethod(PaymentMethodType.CREDIT_CARD)} className={`w-full p-4 border rounded-xl font-bold text-sm ${selectedPaymentMethod === PaymentMethodType.CREDIT_CARD ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200'}`}>Cartão de Crédito</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-      );
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-teal-50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* LEFT COLUMN */}
-            <div className="lg:col-span-2 space-y-8">
-                {/* HERO CARD */}
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="bg-slate-900 p-8 flex justify-between items-center text-white">
-                        <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter">{myProfile.fullName}</h1>
-                            <p className="text-slate-400 text-sm mt-1">{myProfile.companyName || 'Profissional Independente'}</p>
-                        </div>
-                        <LevelBadge level={myProfile.level} size="lg" />
-                    </div>
-                    <div className="p-8 grid grid-cols-3 gap-6 text-center border-b">
-                        <div className="bg-slate-50 p-6 rounded-2xl">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Rating</p>
-                            <p className="text-3xl font-black text-slate-900">{myProfile.rating} ⭐</p>
-                        </div>
-                        <div className="bg-slate-50 p-6 rounded-2xl">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pontos</p>
-                            <p className="text-3xl font-black text-slate-900">{myProfile.points}</p>
-                        </div>
-                        <div className="bg-slate-50 p-6 rounded-2xl">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leads</p>
-                            <p className="text-3xl font-black text-slate-900">{acceptedLeads.length}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* MY PORTFOLIO SECTION */}
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-black text-slate-900">Meu Portfolio (Antes & Depois)</h3>
-                        <button onClick={() => setShowPortfolioModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-blue-200 transition">
-                            + Add Work
-                        </button>
-                    </div>
-
-                    {!myProfile.portfolio || myProfile.portfolio.length === 0 ? (
-                        <div className="bg-slate-50 rounded-2xl p-8 text-center border border-dashed border-slate-200">
-                            <p className="text-slate-500 text-sm mb-2">Você ainda não postou fotos de trabalhos.</p>
-                            <p className="text-xs text-slate-400">Postar fotos aumenta em 40% a chance de conseguir leads!</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {myProfile.portfolio.map((item) => (
-                                <div key={item.id} className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50">
-                                    <div className="flex h-32">
-                                        <div className="w-1/2 relative">
-                                            <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">BEFORE</span>
-                                            <img src={item.beforeImage} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="w-1/2 relative">
-                                            <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">AFTER</span>
-                                            <img src={item.afterImage} className="w-full h-full object-cover" />
-                                        </div>
-                                    </div>
-                                    <div className="p-3 flex justify-between items-center">
-                                        <span className="text-xs font-bold text-slate-700">{item.serviceType}</span>
-                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
-                                            item.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                            item.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                                        }`}>{item.status}</span>
-                                    </div>
-                                    {item.adminNote && <div className="px-3 pb-3 text-[10px] text-red-500 leading-tight">{item.adminNote}</div>}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">Professional Panel</h1>
+            <div className="flex items-center gap-3 mt-2">
+              <LevelBadge level={myProfile.level} size="lg" />
+              <span className="text-sm font-bold text-slate-500">{myProfile.points} Experience Points</span>
             </div>
+          </div>
+          <button onClick={() => setShowPortfolioModal(true)} className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition shadow-lg">
+            Add Portfolio Work
+          </button>
+        </header>
 
-            {/* RIGHT COLUMN - LEADS */}
-            <div className="space-y-8">
-                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-                    <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                        <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
-                        Leads Disponíveis
-                    </h3>
-                    {myLeads.length === 0 ? (
-                        <div className="text-center py-10 opacity-50">
-                            <p className="text-sm font-bold">Nenhum lead novo em {myProfile.zipCodes[0]}</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {myLeads.map(lead => (
-                                <div key={lead.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                    <h4 className="font-bold text-slate-900 mb-1">{lead.serviceType}</h4>
-                                    <p className="text-xs text-slate-500 mb-4">{lead.bedrooms}Q / {lead.bathrooms}B ● {lead.zipCode}</p>
-                                    <button onClick={() => acceptLead(lead.id, myProfile.id)} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm">Aceitar</button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Account Metrics Section */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Account Status</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-slate-600">Verification</span>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${myProfile.status === CleanerStatus.VERIFIED ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {myProfile.status}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-slate-600">Total Points</span>
+                <span className="text-lg font-black text-blue-600">{myProfile.points}</span>
+              </div>
+              {getNextLevelThreshold(myProfile.level) && (
+                <div className="mt-4 pt-4 border-t border-slate-50">
+                   <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase mb-2">
+                     <span>Progress to Next Level</span>
+                     <span>{myProfile.points} / {getNextLevelThreshold(myProfile.level)}</span>
+                   </div>
+                   <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 transition-all" 
+                        style={{ width: `${(myProfile.points / getNextLevelThreshold(myProfile.level)!) * 100}%` }}
+                      ></div>
+                   </div>
                 </div>
+              )}
             </div>
+          </div>
+
+          {/* Subscription Management Section */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Subscription</h3>
+             {myProfile.subscription?.isActive ? (
+               <div className="space-y-4">
+                 <div className="flex justify-between text-xs font-bold">
+                   <span className="text-slate-500">Plan:</span>
+                   <span className="text-slate-900">{myProfile.subscription.plan === SubscriptionPlan.PROMO_STARTUP ? 'PROMO $180/mo' : 'STANDARD $260/mo'}</span>
+                 </div>
+                 <div className="flex justify-between text-xs font-bold">
+                   <span className="text-slate-500">Next Billing:</span>
+                   <span className="text-slate-900">{new Date(myProfile.subscription.nextBillingDate).toLocaleDateString()}</span>
+                 </div>
+                 <div className="bg-green-50 text-green-700 text-[10px] font-black uppercase py-2 text-center rounded-lg border border-green-100">
+                    Active & Verified
+                 </div>
+               </div>
+             ) : (
+               <div className="space-y-4">
+                 <p className="text-xs text-slate-500 leading-relaxed">Activate your subscription to receive new customer leads.</p>
+                 <button 
+                   onClick={() => setSelectedPaymentMethod(PaymentMethodType.STRIPE)}
+                   className="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-bold hover:bg-black transition"
+                 >
+                   Activate Now
+                 </button>
+               </div>
+             )}
+          </div>
+
+          {/* AI Assistant Call-to-Action */}
+          <div className="bg-blue-600 p-6 rounded-3xl shadow-xl text-white">
+             <h3 className="text-sm font-black text-blue-200 uppercase tracking-widest mb-4">Concierge Luna</h3>
+             <p className="text-xs font-medium leading-relaxed mb-6">Need help with your profile or leads? Ask me anything!</p>
+             <button onClick={() => setIsChatOpen(true)} className="w-full bg-white text-blue-600 py-3 rounded-xl text-xs font-bold hover:bg-blue-50 transition">
+               Open Chat
+             </button>
+          </div>
+        </div>
+
+        {/* Available Customer Leads Feed */}
+        <div className="space-y-6">
+          <div className="flex justify-between items-end">
+             <h2 className="text-2xl font-black text-slate-900">Leads Express™</h2>
+             <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded">Live Feed</span>
+          </div>
+
+          <div className="grid gap-4">
+            {leads.filter(l => l.status === 'OPEN').length === 0 ? (
+               <div className="bg-white p-12 rounded-3xl text-center border-2 border-dashed border-slate-100">
+                  <p className="text-slate-400 font-bold">No new leads available at this time.</p>
+               </div>
+            ) : (
+              leads.filter(l => l.status === 'OPEN').map(lead => (
+                <div key={lead.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6 group hover:border-blue-200 transition">
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl">🧹</div>
+                    <div>
+                      <h4 className="font-bold text-lg">{lead.serviceType}</h4>
+                      <div className="flex gap-4 mt-1 text-xs text-slate-400 font-bold">
+                        <span>ZIP: {lead.zipCode}</span>
+                        <span>Rooms: {lead.bedrooms}</span>
+                        <span>Baths: {lead.bathrooms}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if(myProfile.subscription?.isActive) {
+                        acceptLead(lead.id, myProfile.id);
+                      } else {
+                        alert("Please activate your subscription to accept leads.");
+                      }
+                    }}
+                    className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold px-10 py-3 rounded-xl transition shadow-lg shadow-green-100"
+                  >
+                    Accept Lead
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
+
       {showPortfolioModal && (
-          <PortfolioUploadModal 
-            onClose={() => setShowPortfolioModal(false)} 
-            onUpload={async (data) => {
-                await addPortfolioItem(myProfile.id, data);
-            }} 
-          />
+        <PortfolioUploadModal 
+          onClose={() => setShowPortfolioModal(false)} 
+          onUpload={(data) => addPortfolioItem(myProfile.id, data)}
+        />
+      )}
+
+      {/* Mock Payment Processing Dialog */}
+      {selectedPaymentMethod && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+           <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center animate-scale-in">
+              <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Activate Subscription</h3>
+              <p className="text-slate-500 mb-8">Professional leads access starts at $180/month.</p>
+              <div className="space-y-3">
+                <button 
+                  onClick={async () => {
+                    setIsProcessingPayment(true);
+                    try {
+                      const sub = await processSubscriptionPayment(myProfile.id, PaymentMethodType.STRIPE);
+                      activateSubscription(myProfile.id, sub);
+                      setSelectedPaymentMethod(null);
+                    } finally {
+                      setIsProcessingPayment(false);
+                    }
+                  }}
+                  disabled={isProcessingPayment}
+                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition disabled:opacity-50"
+                >
+                  {isProcessingPayment ? 'Processing...' : 'Subscribe Securely'}
+                </button>
+                <button onClick={() => setSelectedPaymentMethod(null)} className="w-full text-slate-400 font-bold py-2 hover:text-slate-600">Maybe Later</button>
+              </div>
+           </div>
+        </div>
       )}
     </div>
   );

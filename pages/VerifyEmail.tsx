@@ -56,7 +56,7 @@ const VerifyEmail: React.FC = () => {
                 setStatus('success');
             } else {
                 setStatus('error');
-                setErrorMessage('Código inválido ou expirado.');
+                setErrorMessage('O código inserido é inválido ou expirou.');
             }
         }
     }, 1500);
@@ -85,12 +85,13 @@ const VerifyEmail: React.FC = () => {
        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
           
           {status === 'success' ? (
-              /* Success View - Explicit Key to prevent DOM reconciliation issues */
               <div key="view-success" className="animate-fade-in mt-4">
                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                  </div>
-                 <h2 className="text-3xl font-black text-gray-900 mb-2">{isClientFlow ? 'Confirmado!' : 'Verificado!'}</h2>
+                 <h2 className="text-3xl font-black text-gray-900 mb-2">
+                    {isClientFlow ? 'Confirmado!' : 'Ativado!'}
+                 </h2>
                  <p className="text-gray-600 mb-8 leading-relaxed">
                     {isClientFlow 
                         ? 'Sua solicitação foi enviada para nossos profissionais verificados.' 
@@ -101,15 +102,15 @@ const VerifyEmail: React.FC = () => {
                  </button>
               </div>
           ) : (
-              /* Input View - Explicit Key to prevent DOM reconciliation issues */
               <div key="view-input" className="animate-fade-in mt-4">
                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                  </div>
                  <h2 className="text-2xl font-black text-gray-900 mb-2">Verifique seu E-mail</h2>
                  <p className="text-gray-500 mb-8 text-sm leading-relaxed">
-                    Insira o código de 6 dígitos enviado para:<br/>
+                    Enviamos um código de verificação para o seu e-mail:<br/>
                     <span className="font-bold text-slate-800">{isClientFlow ? (pendingClientEmail || 'seu e-mail') : (cleaner?.email || 'seu e-mail')}</span>
+                    <br/>Digite o código abaixo para confirmar seu cadastro.
                  </p>
 
                  <form onSubmit={handleSubmitCode} className="space-y-6">
@@ -142,7 +143,7 @@ const VerifyEmail: React.FC = () => {
                                 </svg>
                                 Verificando...
                             </span>
-                        ) : 'Confirmar Código'}
+                        ) : 'Verificar'}
                     </button>
                  </form>
 
