@@ -9,7 +9,6 @@ const Navbar: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -49,13 +48,13 @@ const Navbar: React.FC = () => {
           {/* RIGHT SIDE: Navigation Actions */}
           <div className="flex items-center gap-6">
             
-            {/* Dropdown: Painéis */}
+            {/* Dropdown: Access */}
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors bg-slate-50 px-4 py-2 rounded-xl border border-slate-100"
               >
-                Painéis ▾
+                Access ▾
               </button>
 
               {isDropdownOpen && (
@@ -65,14 +64,14 @@ const Navbar: React.FC = () => {
                     className="w-full text-left px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-green-600 transition-colors flex items-center gap-3"
                   >
                     <span className="text-lg">🧹</span>
-                    Painel das House Cleaners
+                    House Cleaner Portal
                   </button>
                   <button 
                     onClick={() => handleNavigateToPanel(UserRole.ADMIN, '/admin')}
                     className="w-full text-left px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-3"
                   >
                     <span className="text-lg">⚙️</span>
-                    Painel Administrativo
+                    Administrative Access
                   </button>
                 </div>
               )}
