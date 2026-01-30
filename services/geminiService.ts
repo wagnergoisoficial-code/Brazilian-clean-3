@@ -85,7 +85,11 @@ export const performIdentityVerification = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
   try {
-    const cleanBase64 = (url: string) => url.split(',')[1] || url;
+    const cleanBase64 = (url: string) => {
+        if (!url) return "";
+        const parts = url.split(',');
+        return parts.length > 1 ? parts[1] : parts[0];
+    };
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -100,40 +104,31 @@ export const performIdentityVerification = async (
             4. Selfie holding the document next to the face
             
             STRICT VERIFICATION STEPS:
-            - FACE CONSISTENCY: Compare the face in (3) Professional Photo and (4) Selfie. Are they the same person?
+            - FACE CONSISTENCY: Compare the face in (3) Professional Photo and (4) Selfie.
             - DOCUMENT MATCH: Compare the face printed on (1) Document Front with the person in (3) and (4).
-            - NAME VALIDATION: Extract the name from (1) Document Front. Does it match "${userProfile.fullName}"?
-            - CONTEXTUAL CHECK: In (4) Selfie with Doc, is the person holding the same physical document shown in (1) and (2)?
-            - INTEGRITY CHECK: Detect any signs of digital manipulation.
+            - NAME VALIDATION: Does it match "${userProfile.fullName}"?
+            - CONTEXTUAL CHECK: In (4) Selfie with Doc, is the document the same as (1)?
             
-            USER FEEDBACK GENERATION (CRITICAL):
-            If the verification status is NOT "LIKELY_VALID", you must provide a reason and an instruction in Portuguese following these templates exactly:
+            USER FEEDBACK GENERATION:
+            Return ONLY a valid JSON object.
             
-            Selfie Clarity Issue:
-            Reason: "Não conseguimos identificar seu rosto com clareza."
-            Instruction: "Aproxime mais o rosto da câmera e tente novamente."
+            If the verification status is NOT "LIKELY_VALID", provide reason and instruction in Portuguese:
             
-            Document Clarity Issue:
-            Reason: "Não foi possível ler as informações do documento."
-            Instruction: "Tire uma nova foto em um local bem iluminado, sem reflexos."
+            Templates:
+            - Selfie: "Não conseguimos identificar seu rosto com clareza." / "Aproxime mais o rosto da câmera e tente novamente."
+            - Documento: "Não foi possível ler as informações do documento." / "Tire uma nova foto em um local bem iluminado, sem reflexos."
+            - Selfie com Doc: "O documento não está totalmente visível na selfie." / "Segure o documento próximo ao rosto, com a foto aparecendo."
+            - Mismatch: "Não conseguimos confirmar que a pessoa da foto é a mesma do documento." / "Tente novamente sem acessórios e garanta boa iluminação."
             
-            Selfie with Document Issue:
-            Reason: "O documento não está totalmente visível na selfie."
-            Instruction: "Segure o documento próximo ao rosto, com a foto aparecendo."
-            
-            Face Mismatch/Accessories:
-            Reason: "Não conseguimos confirmar que a pessoa da foto é a mesma do documento."
-            Instruction: "Tente novamente sem acessórios (óculos, chapéus) e garanta boa iluminação."
-            
-            Return a JSON object:
+            Return JSON:
             {
               "verification_status": "LIKELY_VALID" | "NEEDS_MANUAL_REVIEW" | "LIKELY_FRAUD",
-              "confidence_score": number (0 to 1),
+              "confidence_score": number,
               "detected_issues": string[],
               "summary": string,
               "recommended_action": "Approve" | "Review" | "Reject",
-              "user_reason_pt": "String with the Portuguese reason",
-              "user_instruction_pt": "String with the Portuguese instruction"
+              "user_reason_pt": string,
+              "user_instruction_pt": string
             }` 
           },
           { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(assets.docFront) } },
@@ -166,16 +161,17 @@ export const performIdentityVerification = async (
       timestamp: new Date().toISOString()
     };
   } catch (error) {
-    console.error("AI Verification Error:", error);
+    console.error("AI Verification Exception:", error);
+    // CRITICAL: Guaranteed fallback to avoid frontend crash
     return {
       verification_status: "NEEDS_MANUAL_REVIEW",
-      confidence_score: 0.5,
-      detected_issues: ["AI processing error"],
-      summary: "Manual review required due to technical processing timeout.",
+      confidence_score: 0.0,
+      detected_issues: ["Technical Processing Exception"],
+      summary: "O processamento automático falhou devido a um erro técnico. O perfil será revisado manualmente.",
       recommended_action: "Review",
       timestamp: new Date().toISOString(),
-      user_reason_pt: "Ocorreu um erro técnico durante a análise automática.",
-      user_instruction_pt: "Tente novamente em alguns instantes ou entre em contato com o suporte."
+      user_reason_pt: "Seus documentos foram recebidos, mas o processamento automático encontrou uma instabilidade.",
+      user_instruction_pt: "Não se preocupe, nossa equipe fará a verificação manual em breve. Fique atento ao seu e-mail."
     };
   }
 };

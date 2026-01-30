@@ -32,10 +32,15 @@ const CleanerDashboard: React.FC = () => {
   const isVerified = myProfile.status === CleanerStatus.VERIFIED;
   const isUnderReview = myProfile.status === CleanerStatus.UNDER_REVIEW;
   
-  // High-Security Marketplace Correction Logic
+  // Correction needed if explicitly flagged by AI or Admin
   const needsCorrection = isUnderReview && 
                          myProfile.aiVerificationResult && 
-                         myProfile.aiVerificationResult.verification_status !== 'LIKELY_VALID';
+                         myProfile.aiVerificationResult.verification_status === 'LIKELY_FRAUD';
+
+  // Manual review if flagged or technical issue occurred
+  const isManualReview = isUnderReview && 
+                        (!myProfile.aiVerificationResult || 
+                         myProfile.aiVerificationResult.verification_status === 'NEEDS_MANUAL_REVIEW');
 
   const steps = [
     { id: 'personal', label: 'Informações Pessoais', completed: !!myProfile.phone, path: '/setup-personal' },
@@ -50,13 +55,13 @@ const CleanerDashboard: React.FC = () => {
 
   const handleCorrection = () => {
       if (!myProfile) return;
-      // Reset document progress but keep other info
       updateCleanerProfile(myProfile.id, {
           status: CleanerStatus.DOCUMENTS_PENDING,
           documentFrontUrl: undefined,
           documentBackUrl: undefined,
           facePhotoUrl: undefined,
-          selfieWithDocUrl: undefined
+          selfieWithDocUrl: undefined,
+          aiVerificationResult: undefined
       });
       navigate(`/verify-documents?id=${myProfile.id}`);
   };
@@ -72,7 +77,7 @@ const CleanerDashboard: React.FC = () => {
             <div className="flex gap-4">
                  <button onClick={logout} className="text-sm font-bold text-slate-400 hover:text-red-600 transition flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                    Sair da plataforma
+                    Sair
                  </button>
             </div>
         </header>
@@ -97,11 +102,11 @@ const CleanerDashboard: React.FC = () => {
                         </div>
                         <div className="bg-slate-50 p-6 rounded-2xl text-center">
                             <span className="text-3xl font-black text-green-600">{myProfile.rating || 0}</span>
-                            <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">Média de Avaliação</p>
+                            <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">Avaliação</p>
                         </div>
                         <div className="bg-slate-50 p-6 rounded-2xl text-center">
                             <span className="text-3xl font-black text-slate-900">{myProfile.reviewCount || 0}</span>
-                            <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">Total de Reviews</p>
+                            <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">Reviews</p>
                         </div>
                     </div>
                 </div>
@@ -114,7 +119,7 @@ const CleanerDashboard: React.FC = () => {
                     </div>
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Ação necessária</h2>
-                        <p className="text-orange-600 font-bold text-sm uppercase tracking-widest">Verificação não aprovada automaticamente</p>
+                        <p className="text-orange-600 font-bold text-sm uppercase tracking-widest">Problema na documentação</p>
                     </div>
                 </div>
                 
@@ -127,26 +132,34 @@ const CleanerDashboard: React.FC = () => {
                     onClick={handleCorrection}
                     className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-black transition flex items-center justify-center gap-3"
                 >
-                    Corrigir Documentos e Reenviar
+                    Corrigir e Reenviar
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7"/></svg>
                 </button>
             </div>
-        ) : isUnderReview ? (
-            <div className="bg-slate-900 p-10 rounded-3xl text-white shadow-2xl relative overflow-hidden animate-fade-in">
+        ) : isManualReview ? (
+            <div className="bg-slate-900 p-10 rounded-3xl text-white shadow-2xl relative overflow-hidden animate-fade-in border-l-4 border-blue-500">
                 <div className="absolute top-0 right-0 p-10 opacity-10">
-                    <svg className="w-32 h-32 animate-spin-slow" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                    <svg className="w-32 h-32 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
                 </div>
-                <h2 className="text-3xl font-black mb-4">Perfil em Análise ⏳</h2>
-                <p className="text-slate-400 text-lg leading-relaxed max-w-xl">
-                    Nossa IA Guardian está revisando sua documentação e selfie para garantir a segurança da plataforma. Você receberá um e-mail em breve.
-                </p>
+                <div className="relative z-10">
+                    <span className="bg-blue-600 text-[10px] font-black uppercase px-3 py-1 rounded-full mb-4 inline-block tracking-widest">Em análise manual</span>
+                    <h2 className="text-3xl font-black mb-4">Documentos Recebidos 📑</h2>
+                    <p className="text-slate-400 text-lg leading-relaxed max-w-xl mb-4">
+                        Seus dados foram enviados com sucesso. Nossa equipe está revisando seu perfil manualmente para garantir a segurança da plataforma.
+                    </p>
+                    {myProfile.aiVerificationResult?.user_reason_pt && (
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10 mt-4">
+                            <p className="text-blue-300 text-sm italic font-medium">"{myProfile.aiVerificationResult.user_instruction_pt}"</p>
+                        </div>
+                    )}
+                </div>
             </div>
         ) : (
             <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100">
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h2 className="text-2xl font-black text-slate-900">Próximos Passos</h2>
-                        <p className="text-slate-500 font-medium">Perfil incompleto – complete os passos para começar.</p>
+                        <p className="text-slate-500 font-medium">Complete seu cadastro para começar.</p>
                     </div>
                     <div className="text-right">
                         <span className="text-3xl font-black text-blue-600">{progress}%</span>

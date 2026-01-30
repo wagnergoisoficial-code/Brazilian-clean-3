@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { CleanerStatus } from '../types';
+import { CleanerStatus, AiVerificationResult } from '../types';
 import { performIdentityVerification } from '../services/geminiService';
 
 interface ImageEditorProps {
@@ -22,7 +22,6 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
   const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    // Reset positioning when a new image is loaded
     setPosition({ x: 0, y: 0 });
     setScale(1);
   }, [imageSrc]);
@@ -49,7 +48,6 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Normalize resolution (e.g., 1280px width for documents)
     const targetWidth = 1280;
     const targetHeight = targetWidth / aspectRatio;
     canvas.width = targetWidth;
@@ -58,19 +56,15 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
     const rect = containerRef.current.getBoundingClientRect();
     const imgRect = imageRef.current.getBoundingClientRect();
 
-    // Calculate relative coordinates
     const displayedWidth = imgRect.width;
     const displayedHeight = imgRect.height;
 
-    // Natural dimensions of the source image
     const naturalWidth = imageRef.current.naturalWidth;
     const naturalHeight = imageRef.current.naturalHeight;
 
-    // Scale ratio between natural and displayed
     const scaleX = naturalWidth / displayedWidth;
     const scaleY = naturalHeight / displayedHeight;
 
-    // Source coordinates relative to image
     const sx = (rect.left - imgRect.left) * scaleX;
     const sy = (rect.top - imgRect.top) * scaleY;
     const sWidth = rect.width * scaleX;
@@ -99,7 +93,6 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
           <p className="text-xs text-slate-500 font-medium text-center">Arraste a imagem para alinhar dentro do quadro.</p>
           
           <div className="relative w-full aspect-[3/2] bg-slate-100 rounded-2xl overflow-hidden border-2 border-slate-200">
-            {/* Guide Overlay */}
             <div className="absolute inset-0 z-10 pointer-events-none border-[20px] border-slate-900/40">
               <div 
                 ref={containerRef}
@@ -107,7 +100,6 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
               ></div>
             </div>
 
-            {/* Draggable Image */}
             <img
               ref={imageRef}
               src={imageSrc}
@@ -162,7 +154,6 @@ const DocumentVerification: React.FC = () => {
 
   const myProfile = cleaners.find(c => c.id === cleanerId);
 
-  // wizard step state
   const [step, setStep] = useState(1);
   const [assets, setAssets] = useState({
       docFront: '',
@@ -172,7 +163,6 @@ const DocumentVerification: React.FC = () => {
   });
   const [isVerifying, setIsVerifying] = useState(false);
   
-  // Image editing state
   const [editingField, setEditingField] = useState<keyof typeof assets | null>(null);
   const [tempImage, setTempImage] = useState<string | null>(null);
 
@@ -186,7 +176,6 @@ const DocumentVerification: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
         const reader = new FileReader();
         reader.onload = () => {
-          // Instead of saving directly, open the editor for documents
           if (field === 'docFront' || field === 'docBack') {
             setTempImage(reader.result as string);
             setEditingField(field);
@@ -216,28 +205,53 @@ const DocumentVerification: React.FC = () => {
     if (!assets.docFront || !assets.docBack || !assets.facePhoto || !assets.selfieWithDoc || !myProfile || !cleanerId) return;
 
     setIsVerifying(true);
+    
+    // STEP 1: Persist assets immediately to the profile (in-memory)
+    // This satisfies the "Don't force re-upload" requirement
+    updateCleanerProfile(cleanerId, {
+        documentFrontUrl: assets.docFront,
+        documentBackUrl: assets.docBack,
+        facePhotoUrl: assets.facePhoto,
+        selfieWithDocUrl: assets.selfieWithDoc,
+        status: CleanerStatus.UNDER_REVIEW
+    });
+
     try {
+        // STEP 2: Call AI Verification
         const aiResult = await performIdentityVerification(assets, { 
             fullName: myProfile.fullName, 
             email: myProfile.email 
         });
 
+        // STEP 3: Update with AI result
         updateCleanerProfile(cleanerId, {
-            documentFrontUrl: assets.docFront,
-            documentBackUrl: assets.docBack,
-            facePhotoUrl: assets.facePhoto,
-            selfieWithDocUrl: assets.selfieWithDoc,
-            aiVerificationResult: aiResult,
-            status: CleanerStatus.UNDER_REVIEW
+            aiVerificationResult: aiResult
         });
 
         setTimeout(() => {
             navigate('/dashboard');
-        }, 1500);
+        }, 800);
 
     } catch (err) {
-        alert("Erro na validação de documentos. Tente novamente.");
-        setIsVerifying(false);
+        console.error("Verification logic failure:", err);
+        
+        // STEP 4: Fallback to Manual Review if service layer fails
+        const fallback: AiVerificationResult = {
+            verification_status: "NEEDS_MANUAL_REVIEW",
+            confidence_score: 0,
+            detected_issues: ["Unexpected Application Error"],
+            summary: "Ocorreu um erro interno durante a análise automática. Seu perfil será revisado manualmente pela nossa equipe.",
+            recommended_action: "Review",
+            timestamp: new Date().toISOString(),
+            user_reason_pt: "Erro interno no sistema de verificação.",
+            user_instruction_pt: "Seus dados foram salvos com sucesso. Nossa equipe fará a revisão manual do seu perfil."
+        };
+        
+        updateCleanerProfile(cleanerId, {
+            aiVerificationResult: fallback
+        });
+        
+        setTimeout(() => navigate('/dashboard'), 1000);
     }
   };
 
@@ -353,7 +367,7 @@ const DocumentVerification: React.FC = () => {
                             {isVerifying ? (
                                 <>
                                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    Autenticando...
+                                    Enviando...
                                 </>
                             ) : 'Finalizar e Enviar'}
                         </button>
