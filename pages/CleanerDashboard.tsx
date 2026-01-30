@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { CleanerStatus, PaymentMethodType, SubscriptionPlan, CleanerLevel } from '../types';
+import { CleanerStatus, PaymentMethodType, SubscriptionPlan, CleanerLevel, UserRole } from '../types';
 import { processSubscriptionPayment } from '../services/mockPaymentService';
 import { getNextLevelThreshold } from '../services/meritService';
 import { useNavigate } from 'react-router-dom';
@@ -95,7 +94,7 @@ const PortfolioUploadModal: React.FC<{ onClose: () => void; onUpload: (data: any
 };
 
 const CleanerDashboard: React.FC = () => {
-  const { cleaners, leads, acceptLead, setIsChatOpen, activateSubscription, addPortfolioItem } = useAppContext();
+  const { cleaners, leads, acceptLead, setIsChatOpen, activateSubscription, addPortfolioItem, setUserRole } = useAppContext();
   const navigate = useNavigate();
   
   const myProfile = cleaners.length > 0 ? cleaners[cleaners.length - 1] : null; 
@@ -131,6 +130,13 @@ const CleanerDashboard: React.FC = () => {
 
   }, [myProfile, navigate]);
 
+  const handleLogout = () => {
+    if (window.confirm("Deseja realmente sair do painel?")) {
+      setUserRole(UserRole.CLIENT);
+      navigate('/');
+    }
+  };
+
   if (!myProfile) return null;
 
   // Render Logic for Non-Verified states (while stay on Dashboard)
@@ -148,7 +154,13 @@ const CleanerDashboard: React.FC = () => {
                     <svg className="w-64 h-64" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
                 </div>
                 <div className="relative z-10 max-w-2xl">
-                    <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter">Status: {isPendingReview ? 'Em Análise' : 'Cadastro em Andamento'}</h2>
+                    <div className="flex justify-between items-start mb-4">
+                        <h2 className="text-3xl font-black uppercase tracking-tighter">Status: {isPendingReview ? 'Em Análise' : 'Cadastro em Andamento'}</h2>
+                        <button onClick={handleLogout} className="text-slate-400 hover:text-white transition flex items-center gap-1 text-[10px] font-black tracking-widest uppercase">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                            Sair
+                        </button>
+                    </div>
                     <p className="text-slate-400 text-lg mb-8 leading-relaxed">
                         {isPendingReview 
                            ? "Excelente! Seus documentos estão sendo revisados pela nossa IA Guardian. Você receberá uma notificação assim que for aprovado para aceitar leads."
@@ -179,9 +191,15 @@ const CleanerDashboard: React.FC = () => {
                     <span className="text-sm font-bold text-slate-500">{myProfile.points} Pontos de Experiência</span>
                     </div>
                 </div>
-                <button onClick={() => setShowPortfolioModal(true)} className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition shadow-lg">
-                    Adicionar ao Portfólio
-                </button>
+                <div className="flex gap-3 w-full md:w-auto">
+                    <button onClick={() => setShowPortfolioModal(true)} className="flex-1 md:flex-none bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition shadow-lg">
+                        Adicionar ao Portfólio
+                    </button>
+                    <button onClick={handleLogout} className="flex-1 md:flex-none bg-white text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-100 font-bold px-6 py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Sair
+                    </button>
+                </div>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
