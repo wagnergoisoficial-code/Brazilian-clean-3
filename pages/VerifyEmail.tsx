@@ -4,19 +4,22 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
+const COOLDOWN_SECONDS = 60;
+
 const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const cleanerId = searchParams.get('id');
   const type = searchParams.get('type');
   const urlCode = searchParams.get('code');
   
-  const { verifyCleanerCode, resendCleanerCode, resendClientCode, cleaners, pendingClientCode, pendingClientEmail } = useAppContext();
+  const { verifyCleanerCode, resendCleanerCode, resendClientCode, cleaners, pendingClientCode, pendingClientEmail, pendingClientCodeExpires } = useAppContext();
   const navigate = useNavigate();
   
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   
   const cleaner = cleaners.find(c => c.id === cleanerId);
   const isClientFlow = type === 'client';
@@ -29,6 +32,14 @@ const VerifyEmail: React.FC = () => {
     }
   }, [urlCode]);
 
+  useEffect(() => {
+    let timer: any;
+    if (cooldown > 0) {
+      timer = setInterval(() => setCooldown(c => c - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
   const handleSubmitCode = (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length !== 6) return;
@@ -38,11 +49,16 @@ const VerifyEmail: React.FC = () => {
 
     setTimeout(() => {
         if (isClientFlow) {
+            if (Date.now() > (pendingClientCodeExpires || 0)) {
+                 setStatus('error');
+                 setErrorMessage('The code has expired. Please request a new one.');
+                 return;
+            }
             if (code === pendingClientCode) {
                  setStatus('success');
             } else {
                  setStatus('error');
-                 setErrorMessage('The code entered is invalid or expired.');
+                 setErrorMessage('The code entered is invalid.');
             }
         } else {
             if (!cleanerId) {
@@ -50,19 +66,19 @@ const VerifyEmail: React.FC = () => {
                 setErrorMessage('Link inválido. ID do profissional não encontrado.');
                 return;
             }
-            const success = verifyCleanerCode(cleanerId, code);
-            if (success) {
+            const result = verifyCleanerCode(cleanerId, code);
+            if (result.success) {
                 setStatus('success');
             } else {
                 setStatus('error');
-                setErrorMessage('O código inserido é inválido ou expirou.');
+                setErrorMessage(result.error || 'Erro inesperado.');
             }
         }
-    }, 1500);
+    }, 800);
   };
 
   const handleResend = async () => {
-    if (isResending) return;
+    if (isResending || cooldown > 0) return;
     setIsResending(true);
     try {
         if (isClientFlow) {
@@ -72,6 +88,9 @@ const VerifyEmail: React.FC = () => {
             await resendCleanerCode(cleanerId);
             alert('Um novo código de 6 dígitos foi enviado para seu e-mail.');
         }
+        setCooldown(COOLDOWN_SECONDS);
+        setCode('');
+        setStatus('idle');
     } catch (e: any) {
         alert(e.message || (isClientFlow ? 'Error resending code.' : 'Erro ao reenviar código.'));
     } finally {
@@ -83,7 +102,6 @@ const VerifyEmail: React.FC = () => {
     if (isClientFlow) {
       navigate('/');
     } else {
-      // PHASE 2 COMPLETE -> Redirect to Dashboard Checklist
       navigate(`/dashboard`);
     }
   };
@@ -157,13 +175,19 @@ const VerifyEmail: React.FC = () => {
                  </form>
 
                  <div className="mt-8 pt-6 border-t border-slate-100">
-                    <p className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-widest">{isClientFlow ? "Didn't receive the code?" : "Não recebeu o código?"}</p>
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-widest">
+                      {isClientFlow ? "Didn't receive the code?" : "Não recebeu o código?"}
+                    </p>
                     <button 
                         onClick={handleResend}
-                        disabled={isResending || status === 'verifying'}
-                        className={`text-sm font-bold text-blue-600 hover:text-blue-800 underline decoration-2 underline-offset-4 ${isResending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={isResending || cooldown > 0 || status === 'verifying'}
+                        className={`text-sm font-bold text-blue-600 hover:text-blue-800 underline decoration-2 underline-offset-4 ${isResending || cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {isResending ? (isClientFlow ? 'Requesting...' : 'Solicitando...') : (isClientFlow ? 'Resend code' : 'Reenviar código')}
+                        {isResending 
+                          ? (isClientFlow ? 'Requesting...' : 'Solicitando...') 
+                          : (cooldown > 0 
+                              ? (isClientFlow ? `Resend in ${cooldown}s` : `Reenviar em ${cooldown}s`) 
+                              : (isClientFlow ? 'Resend code' : 'Reenviar código'))}
                     </button>
                  </div>
               </div>

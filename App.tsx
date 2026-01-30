@@ -15,6 +15,7 @@ import BrianAI from './components/BrianAI';
 import MockEmailService from './components/MockEmailService';
 import CleanerPersonalInfo from './pages/CleanerPersonalInfo';
 import CleanerBusinessConfig from './pages/CleanerBusinessConfig';
+import CleanerServices from './pages/CleanerServices';
 import CleanerServiceArea from './pages/CleanerServiceArea';
 import DocumentVerification from './pages/DocumentVerification';
 import ClientSettings from './pages/ClientSettings';
@@ -39,13 +40,12 @@ const AppRoutes = () => {
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/support" element={<Support />} />
             
-            {/* House Cleaner Onboarding Sequence */}
             <Route path="/setup-personal" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerPersonalInfo /></ProtectedRoute>} />
             <Route path="/setup-business" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerBusinessConfig /></ProtectedRoute>} />
+            <Route path="/setup-services" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerServices /></ProtectedRoute>} />
             <Route path="/setup-area" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerServiceArea /></ProtectedRoute>} />
             <Route path="/verify-documents" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><DocumentVerification /></ProtectedRoute>} />
             
-            {/* Account Management */}
             <Route path="/settings" element={<ProtectedRoute allowedRole={UserRole.CLIENT}><ClientSettings /></ProtectedRoute>} />
 
             <Route path="/admin" element={<ProtectedRoute allowedRole={UserRole.ADMIN}><AdminDashboard /></ProtectedRoute>} />

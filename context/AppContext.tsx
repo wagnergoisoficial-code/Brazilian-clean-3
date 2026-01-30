@@ -15,11 +15,12 @@ interface AppContextType {
   authenticatedClientId: string | null;
   pendingClientCode: string | null;
   pendingClientEmail: string | null;
+  pendingClientCodeExpires: number | null;
   setUserRole: (role: UserRole) => void;
   registerCleaner: (data: Partial<CleanerProfile>) => Promise<string>;
   loginCleaner: (email: string, password: string) => Promise<CleanerProfile | null>;
   updateCleanerProfile: (id: string, data: Partial<CleanerProfile>) => void;
-  verifyCleanerCode: (cleanerId: string, code: string) => boolean;
+  verifyCleanerCode: (cleanerId: string, code: string) => { success: boolean; error?: string };
   resendCleanerCode: (cleanerId: string) => Promise<void>;
   resendClientCode: () => Promise<void>;
   registerClient: (client: Partial<ClientProfile>) => void;
@@ -30,7 +31,7 @@ interface AppContextType {
   deleteCleaner: (id: string) => void;
   activateSubscription: (id: string, subscription: Subscription) => void;
   addCleanerPoints: (cleanerId: string, amount: number, reason: string) => void;
-  searchCleaners: (zip: string) => CleanerProfile[];
+  searchCleaners: (zip: string, serviceKey?: string) => CleanerProfile[];
   createLead: (lead: Partial<Lead>) => Promise<void>;
   deleteLead: (id: string) => void;
   acceptLead: (leadId: string, cleanerId: string) => void;
@@ -46,6 +47,8 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const VERIFICATION_TTL = 600000; // 10 minutes
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cleaners, setCleaners] = useState<CleanerProfile[]>([]);
   const [clients, setClients] = useState<ClientProfile[]>([]);
@@ -58,8 +61,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [authenticatedClientId, setAuthenticatedClientId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [lastEmail, setLastEmail] = useState<EmailNotification | null>(null);
-  const [pendingClientCode, setPendingClientCode] = useState<string | null>(null);
-  const [pendingClientEmail, setPendingClientEmail] = useState<string | null>(null);
+  
+  // Persisted Client Verification State
+  const [pendingClientCode, setPendingClientCode] = useState<string | null>(localStorage.getItem('bc_pending_code'));
+  const [pendingClientEmail, setPendingClientEmail] = useState<string | null>(localStorage.getItem('bc_pending_email'));
+  const [pendingClientCodeExpires, setPendingClientCodeExpires] = useState<number | null>(
+    localStorage.getItem('bc_pending_expiry') ? parseInt(localStorage.getItem('bc_pending_expiry')!) : null
+  );
 
   useEffect(() => {
     const safeParse = (key: string, fallback: any) => {
@@ -107,6 +115,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     else localStorage.removeItem('bc_auth_client_id');
   }, [authenticatedClientId]);
 
+  // Handle Client Persistence
+  useEffect(() => {
+    if (pendingClientCode) localStorage.setItem('bc_pending_code', pendingClientCode);
+    else localStorage.removeItem('bc_pending_code');
+    
+    if (pendingClientEmail) localStorage.setItem('bc_pending_email', pendingClientEmail);
+    else localStorage.removeItem('bc_pending_email');
+    
+    if (pendingClientCodeExpires) localStorage.setItem('bc_pending_expiry', pendingClientCodeExpires.toString());
+    else localStorage.removeItem('bc_pending_expiry');
+  }, [pendingClientCode, pendingClientEmail, pendingClientCodeExpires]);
+
   const requestVerificationEmail = async (to: string, lang: 'en' | 'pt') => {
     try {
       const response = await fetch('/.netlify/functions/sendVerificationEmail', {
@@ -137,7 +157,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       joinedDate: new Date().toISOString(),
       emailVerified: false,
       verificationCode: code,
-      verificationCodeExpires: Date.now() + 600000,
+      verificationCodeExpires: Date.now() + VERIFICATION_TTL,
       points: 0, 
       level: CleanerLevel.BRONZE, 
       pointHistory: [],
@@ -149,11 +169,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       yearsExperience: 0, 
       description: '', 
       photoUrl: '',
-      isListed: true, // Visible by default if other rules met
+      isListed: true,
       profileCompleted: false
     };
     setCleaners(prev => [...prev, newCleaner]);
     return id;
+  };
+
+  const resendCleanerCode = async (cleanerId: string) => {
+    const cleaner = cleaners.find(c => c.id === cleanerId);
+    if (!cleaner) throw new Error("Profissional não encontrado.");
+    
+    const code = await requestVerificationEmail(cleaner.email, 'pt');
+    updateCleanerProfile(cleanerId, {
+      verificationCode: code,
+      verificationCodeExpires: Date.now() + VERIFICATION_TTL
+    });
+  };
+
+  const resendClientCode = async () => {
+    if (!pendingClientEmail) throw new Error("E-mail não encontrado.");
+    const code = await requestVerificationEmail(pendingClientEmail, 'en');
+    setPendingClientCode(code);
+    setPendingClientCodeExpires(Date.now() + VERIFICATION_TTL);
   };
 
   const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
@@ -170,15 +208,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
-  const verifyCleanerCode = (cleanerId: string, code: string): boolean => {
+  const verifyCleanerCode = (cleanerId: string, code: string): { success: boolean; error?: string } => {
     const cleaner = cleaners.find(c => c.id === cleanerId);
-    if (cleaner && cleaner.verificationCode === code) {
-      setAuthenticatedCleanerId(cleanerId);
-      setUserRole(UserRole.CLEANER);
-      updateCleanerProfile(cleanerId, { emailVerified: true, status: CleanerStatus.BUSINESS_PENDING });
-      return true;
+    if (!cleaner) return { success: false, error: 'User not found.' };
+
+    if (cleaner.verificationCode !== code) {
+      return { success: false, error: 'Código inválido.' };
     }
-    return false;
+
+    if (cleaner.verificationCodeExpires && Date.now() > cleaner.verificationCodeExpires) {
+      return { success: false, error: 'Este código expirou. Solicite um novo.' };
+    }
+
+    setAuthenticatedCleanerId(cleanerId);
+    setUserRole(UserRole.CLEANER);
+    updateCleanerProfile(cleanerId, { emailVerified: true, status: CleanerStatus.BUSINESS_PENDING });
+    return { success: true };
   };
 
   const logout = () => {
@@ -199,38 +244,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
-  const searchCleaners = (zip: string): CleanerProfile[] => {
-    // 1. Normalize Search ZIP
+  const searchCleaners = (zip: string, serviceKey?: string): CleanerProfile[] => {
     const normalizedZip = zip.trim().substring(0, 5);
     if (normalizedZip.length < 5) return [];
 
-    console.log(`[Marketplace Search] Query: ${normalizedZip}`);
-
-    // 2. Query Logic
-    const results = cleaners.filter(cleaner => {
-      // Rule A: Served ZIPs match
+    return cleaners.filter(cleaner => {
       const servesZip = cleaner.zipCodes.some(z => z.trim().substring(0, 5) === normalizedZip);
       if (!servesZip) return false;
 
-      // Rule B: Listing Rules
-      // Must have basic profile data to be displayed
+      if (serviceKey && serviceKey !== 'All' && !cleaner.services.includes(serviceKey)) return false;
+
       const hasPhone = !!cleaner.phone;
-      const isPublic = cleaner.isListed !== false; // Discoverability toggle
-      
-      // Rule C: Verification Threshold
-      // For growth, we allow UNDER_REVIEW but prioritize VERIFIED in sorting
+      const isPublic = cleaner.isListed !== false;
       const isDiscoverable = [CleanerStatus.VERIFIED, CleanerStatus.UNDER_REVIEW].includes(cleaner.status);
 
       return hasPhone && isPublic && isDiscoverable;
     });
-
-    console.log(`[Marketplace Search] Results found: ${results.length}`);
-    return results;
   };
 
   const createLead = async (l: Partial<Lead>) => {
     const code = await requestVerificationEmail(l.clientEmail || '', 'en');
     setPendingClientCode(code);
+    setPendingClientCodeExpires(Date.now() + VERIFICATION_TTL);
     setPendingClientEmail(l.clientEmail || '');
     setLeads(p => [{...l, id: Math.random().toString(36).substr(2, 9), status: 'OPEN', createdAt: Date.now()} as Lead, ...p]);
   };
@@ -241,8 +276,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const activateSubscription = (id: string, s: Subscription) => updateCleanerProfile(id, { subscription: s });
   const addCleanerPoints = (id: string, amt: number, reason: string) => setCleaners(p => p.map(c => c.id === id ? serviceAddPoints(c, amt, reason) : c));
   const deleteLead = (id: string) => setLeads(p => p.filter(l => l.id !== id));
-  
-  // FIXED: correctly mapping over the leads array to update the accepted lead status and cleaner assignment.
   const acceptLead = (lid: string, cid: string) => {
     setLeads(p => p.map(l => l.id === lid ? {...l, status: 'ACCEPTED', acceptedByCleanerId: cid} : l));
     addCleanerPoints(cid, 10, 'Lead Accepted');
@@ -260,8 +293,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider value={{ 
       cleaners, clients, leads, feedPosts, supportRequests, bonusCampaigns, userRole, setUserRole, 
-      authenticatedCleanerId, authenticatedClientId, pendingClientCode, pendingClientEmail,
-      registerCleaner, loginCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode: async () => {}, resendClientCode: async () => {}, 
+      authenticatedCleanerId, authenticatedClientId, pendingClientCode, pendingClientEmail, pendingClientCodeExpires,
+      registerCleaner, loginCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode, resendClientCode, 
       registerClient, updateClientProfile, logout, verifyCleaner, rejectCleaner, deleteCleaner,
       activateSubscription, addCleanerPoints, searchCleaners, createLead, deleteLead, acceptLead, 
       createSupportRequest: () => {}, updateSupportStatus: () => {}, 

@@ -8,6 +8,8 @@ export enum UserRole {
 export enum CleanerStatus {
   EMAIL_PENDING = 'EMAIL_PENDING',
   BUSINESS_PENDING = 'BUSINESS_PENDING',
+  SERVICES_PENDING = 'SERVICES_PENDING',
+  AREA_PENDING = 'AREA_PENDING',
   DOCUMENTS_PENDING = 'DOCUMENTS_PENDING',
   UNDER_REVIEW = 'UNDER_REVIEW',
   VERIFIED = 'VERIFIED',
@@ -115,7 +117,6 @@ export interface AiVerificationResult {
   summary: string;
   recommended_action: "Approve" | "Review" | "Reject";
   timestamp: string;
-  // User-friendly feedback fields
   user_reason_pt?: string;
   user_instruction_pt?: string;
 }
@@ -136,13 +137,13 @@ export interface CleanerProfile {
   fullName: string;
   phone: string;
   email: string;
-  password?: string; // Encrypted/hashed in production
+  password?: string;
   city: string;
   state: string;
   companyName: string;
   isCompany: boolean;
   yearsExperience: number;
-  services: string[];
+  services: string[]; // Normalized keys like "deep_cleaning"
   zipCodes: string[];
   description: string;
   status: CleanerStatus;
@@ -155,10 +156,8 @@ export interface CleanerProfile {
   photoUrl: string;
   galleryUrls: string[];
   portfolio: PortfolioItem[];
-  // Marketplace discoverability
   isListed: boolean;
   profileCompleted: boolean;
-  // Extended Verification Assets
   documentFrontUrl?: string;
   documentBackUrl?: string;
   facePhotoUrl?: string;
@@ -187,7 +186,7 @@ export interface Lead {
   clientPhone: string;
   clientEmail?: string;
   zipCode: string;
-  serviceType: string;
+  serviceType: string; // Map to normalized keys
   bedrooms: number;
   bathrooms: number;
   date: string;

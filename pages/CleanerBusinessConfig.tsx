@@ -14,20 +14,21 @@ const CleanerBusinessConfig: React.FC = () => {
 
   const [formData, setFormData] = useState({
     companyName: '',
-    isCompany: false, // false = Individual, true = LLC
+    isCompany: false, 
     yearsExperience: 2,
     city: '',
-    state: '',
-    zipCodes: ''
+    state: ''
   });
 
   useEffect(() => {
     if (myProfile) {
         setFormData(prev => ({
             ...prev,
+            companyName: myProfile.companyName || '',
+            isCompany: myProfile.isCompany || false,
+            yearsExperience: myProfile.yearsExperience || 2,
             city: myProfile.city || '',
-            state: myProfile.state || '',
-            zipCodes: (myProfile.zipCodes || []).join(', ')
+            state: myProfile.state || ''
         }));
     } else {
         navigate('/join');
@@ -43,24 +44,16 @@ const CleanerBusinessConfig: React.FC = () => {
         return;
     }
 
-    const zips = formData.zipCodes.split(',').map(s => s.trim().substring(0, 5)).filter(s => s.length === 5);
-    if (zips.length === 0) {
-        alert("Por favor, insira ao menos um CEP válido de 5 dígitos.");
-        return;
-    }
-
     updateCleanerProfile(cleanerId, {
         companyName: formData.companyName || myProfile?.fullName || '',
         isCompany: formData.isCompany,
         yearsExperience: formData.yearsExperience,
         city: formData.city,
         state: formData.state,
-        zipCodes: zips,
-        isListed: true,
-        status: CleanerStatus.DOCUMENTS_PENDING 
+        status: CleanerStatus.SERVICES_PENDING 
     });
 
-    navigate(`/verify-documents?id=${cleanerId}`);
+    navigate(`/setup-services?id=${cleanerId}`);
   };
 
   return (
@@ -72,14 +65,14 @@ const CleanerBusinessConfig: React.FC = () => {
                <div className="w-12 h-1 bg-green-500 mx-2 rounded-full"></div>
                <div className="w-12 h-1 bg-slate-700 rounded-full"></div>
            </div>
-           <h2 className="text-3xl font-black uppercase tracking-tighter">Configuração de Negócio</h2>
-           <p className="text-slate-400 mt-2">Diga-nos como você opera para conectarmos aos leads certos.</p>
+           <h2 className="text-3xl font-black uppercase tracking-tighter">Perfil Profissional</h2>
+           <p className="text-slate-400 mt-2">Diga-nos como você opera para conectarmos aos clientes certos.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
-                <label className="block text-xs font-black uppercase text-slate-400">Tipo de Operação</label>
+                <label className="block text-xs font-black uppercase text-slate-400">Tipo de Atuação</label>
                 <div className="grid grid-cols-2 gap-4">
                     <button 
                         type="button" 
@@ -127,31 +120,19 @@ const CleanerBusinessConfig: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
              <div className="space-y-4">
-                <label className="block text-xs font-black uppercase text-slate-400">Cidade e Estado Sede</label>
+                <label className="block text-xs font-black uppercase text-slate-400">Cidade e Estado</label>
                 <div className="flex gap-2">
                     <input required type="text" placeholder="Cidade" className="w-3/4 bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
                     <input required type="text" maxLength={2} placeholder="FL" className="w-1/4 bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center uppercase" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value.toUpperCase()})} />
                 </div>
              </div>
-             <div className="space-y-4">
-                <label className="block text-xs font-black uppercase text-slate-400">CEPs de Atendimento (ZIP Codes)</label>
-                <input 
-                    required 
-                    type="text" 
-                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors"
-                    value={formData.zipCodes}
-                    onChange={e => setFormData({...formData, zipCodes: e.target.value})}
-                    placeholder="Ex: 32801, 32802, 32803"
-                />
-                <p className="text-[10px] text-slate-400 font-bold italic">Separe múltiplos CEPs por vírgula.</p>
-             </div>
           </div>
 
           <button 
             type="submit" 
-            className="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-green-700 transition transform active:scale-95"
+            className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-black transition transform active:scale-95"
           >
-            Salvar e continuar
+            Próximo Passo
           </button>
         </form>
       </div>
