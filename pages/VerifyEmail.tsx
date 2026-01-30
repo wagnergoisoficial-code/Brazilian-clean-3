@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -78,6 +79,15 @@ const VerifyEmail: React.FC = () => {
     }
   };
 
+  const handleNextAction = () => {
+    if (isClientFlow) {
+      navigate('/');
+    } else {
+      // Flow 2: Redirect to Business Configuration Step
+      navigate(`/setup-business?id=${cleanerId}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden">
@@ -93,16 +103,16 @@ const VerifyEmail: React.FC = () => {
                  <p className="text-gray-600 mb-8 leading-relaxed">
                     {isClientFlow 
                         ? 'Your request has been broadcasted to our verified professionals.' 
-                        : 'Excelente! Sua conta foi verificada. Agora você pode acessar seu painel.'}
+                        : 'Excelente! Sua conta foi verificada. Agora complete seu cadastro profissional.'}
                  </p>
-                 <button onClick={() => navigate(isClientFlow ? '/' : '/dashboard')} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition shadow-lg">
-                    {isClientFlow ? 'Back to Home' : 'Ir para o Painel'}
+                 <button onClick={handleNextAction} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition shadow-lg">
+                    {isClientFlow ? 'Back to Home' : 'Configurar Perfil Profissional'}
                  </button>
               </div>
           ) : (
               <div key="view-input" className="animate-fade-in mt-4">
                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z" /></svg>
+                    <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                  </div>
                  <h2 className="text-2xl font-black text-gray-900 mb-2">
                     {isClientFlow ? 'Verify your Email' : 'Verifique seu E-mail'}

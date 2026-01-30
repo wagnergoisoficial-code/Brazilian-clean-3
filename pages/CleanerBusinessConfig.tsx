@@ -1,0 +1,163 @@
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
+import { CleanerStatus } from '../types';
+
+const CleanerBusinessConfig: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const cleanerId = searchParams.get('id');
+  const { cleaners, updateCleanerProfile } = useAppContext();
+  const navigate = useNavigate();
+
+  const myProfile = cleaners.find(c => c.id === cleanerId);
+
+  const [formData, setFormData] = useState({
+    companyName: '',
+    isCompany: false, // false = Individual, true = LLC
+    yearsExperience: 2,
+    city: '',
+    state: '',
+    zipCodes: ''
+  });
+
+  useEffect(() => {
+    if (myProfile) {
+        setFormData(prev => ({
+            ...prev,
+            city: myProfile.city || '',
+            state: myProfile.state || '',
+            zipCodes: (myProfile.zipCodes || []).join(', ')
+        }));
+    } else {
+        // Safe navigation if no session found
+        navigate('/join');
+    }
+  }, [myProfile, navigate]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cleanerId) return;
+
+    // Sequential Validation
+    if (!formData.companyName && formData.isCompany) {
+        alert("Por favor, insira o nome da sua empresa.");
+        return;
+    }
+
+    const zips = formData.zipCodes.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    if (zips.length === 0) {
+        alert("Por favor, insira ao menos um CEP de atendimento.");
+        return;
+    }
+
+    updateCleanerProfile(cleanerId, {
+        companyName: formData.companyName || myProfile?.fullName || '',
+        isCompany: formData.isCompany,
+        yearsExperience: formData.yearsExperience,
+        city: formData.city,
+        state: formData.state,
+        zipCodes: zips,
+        status: CleanerStatus.DOCUMENTS_PENDING // Move to Step 3
+    });
+
+    navigate(`/verify-documents?id=${cleanerId}`);
+  };
+
+  return (
+    <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans">
+      <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in">
+        <div className="bg-slate-900 p-10 text-center text-white">
+           <div className="flex justify-center mb-4">
+               <div className="w-12 h-1 bg-green-500 rounded-full"></div>
+               <div className="w-12 h-1 bg-green-500 mx-2 rounded-full"></div>
+               <div className="w-12 h-1 bg-slate-700 rounded-full"></div>
+           </div>
+           <h2 className="text-3xl font-black uppercase tracking-tighter">Configuração de Negócio</h2>
+           <p className="text-slate-400 mt-2">Diga-nos como você opera para conectarmos aos leads certos.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-10 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+                <label className="block text-xs font-black uppercase text-slate-400">Tipo de Operação</label>
+                <div className="grid grid-cols-2 gap-4">
+                    <button 
+                        type="button" 
+                        onClick={() => setFormData({...formData, isCompany: false})}
+                        className={`py-4 rounded-2xl font-bold border-2 transition ${!formData.isCompany ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-50 hover:border-slate-200'}`}
+                    >
+                        Individual
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={() => setFormData({...formData, isCompany: true})}
+                        className={`py-4 rounded-2xl font-bold border-2 transition ${formData.isCompany ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-50 hover:border-slate-200'}`}
+                    >
+                        Empresa (LLC)
+                    </button>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                <label className="block text-xs font-black uppercase text-slate-400">Anos de Experiência</label>
+                <input 
+                    type="number" 
+                    min="0" 
+                    max="50"
+                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors font-bold"
+                    value={formData.yearsExperience}
+                    onChange={e => setFormData({...formData, yearsExperience: parseInt(e.target.value) || 0})}
+                />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-xs font-black uppercase text-slate-400">
+                {formData.isCompany ? 'Nome da Empresa' : 'Nome Profissional (Como aparecerá para o cliente)'}
+            </label>
+            <input 
+                required 
+                type="text" 
+                className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors"
+                value={formData.companyName}
+                onChange={e => setFormData({...formData, companyName: e.target.value})}
+                placeholder={formData.isCompany ? "Ex: Clean & Bright LLC" : "Ex: Maria's Professional Cleaning"}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="space-y-4">
+                <label className="block text-xs font-black uppercase text-slate-400">Cidade e Estado Sede</label>
+                <div className="flex gap-2">
+                    <input required type="text" placeholder="Cidade" className="w-3/4 bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
+                    <input required type="text" maxLength={2} placeholder="FL" className="w-1/4 bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center uppercase" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value.toUpperCase()})} />
+                </div>
+             </div>
+             <div className="space-y-4">
+                <label className="block text-xs font-black uppercase text-slate-400">CEPs de Atendimento (ZIP Codes)</label>
+                <input 
+                    required 
+                    type="text" 
+                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors"
+                    value={formData.zipCodes}
+                    onChange={e => setFormData({...formData, zipCodes: e.target.value})}
+                    placeholder="Ex: 32801, 32802, 32803"
+                />
+                <p className="text-[10px] text-slate-400 font-bold italic">Separe múltiplos CEPs por vírgula.</p>
+             </div>
+          </div>
+
+          <button 
+            type="submit" 
+            className="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-green-700 transition transform active:scale-95"
+          >
+            Salvar e continuar
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default CleanerBusinessConfig;

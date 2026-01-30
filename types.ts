@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   CLIENT = 'CLIENT',
   CLEANER = 'CLEANER',
@@ -8,6 +7,8 @@ export enum UserRole {
 
 export enum CleanerStatus {
   EMAIL_PENDING = 'EMAIL_PENDING',
+  BUSINESS_PENDING = 'BUSINESS_PENDING',
+  DOCUMENTS_PENDING = 'DOCUMENTS_PENDING',
   UNDER_REVIEW = 'UNDER_REVIEW',
   VERIFIED = 'VERIFIED',
   REJECTED = 'REJECTED'
@@ -204,9 +205,6 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-/**
- * Added EmailNotification interface to define the structure of mock notifications.
- */
 export interface EmailNotification {
   to: string;
   subject: string;

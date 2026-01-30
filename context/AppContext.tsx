@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CleanerProfile, CleanerStatus, UserRole, Lead, FeedPost, ClientProfile, SupportRequest, SupportStatus, SupportType, Subscription, SubscriptionPlan, PaymentMethodType, Discount, CleanerLevel, BonusCampaign, PortfolioItem, EmailNotification } from '../types';
 import { addPoints as serviceAddPoints } from '../services/meritService';
@@ -46,6 +47,7 @@ interface AppContextType {
   pendingClientEmail: string | null;
   setUserRole: (role: UserRole) => void;
   registerCleaner: (cleaner: Partial<CleanerProfile>) => Promise<string>;
+  updateCleanerProfile: (id: string, data: Partial<CleanerProfile>) => void;
   verifyCleanerCode: (cleanerId: string, code: string) => boolean;
   resendCleanerCode: (cleanerId: string) => Promise<void>;
   resendClientCode: () => Promise<void>;
@@ -159,11 +161,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       pointHistory: [],
       emailVerified: false,
       verificationCode: code,
-      verificationCodeExpires: expires
+      verificationCodeExpires: expires,
+      isCompany: false,
+      yearsExperience: 0,
+      services: [],
+      zipCodes: []
     } as CleanerProfile;
 
     setCleaners(prev => [...prev, newCleaner]);
     return id;
+  };
+
+  const updateCleanerProfile = (id: string, data: Partial<CleanerProfile>) => {
+    setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
   const verifyCleanerCode = (cleanerId: string, code: string): boolean => {
@@ -177,7 +187,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         c.id === cleanerId ? { 
           ...c, 
           emailVerified: true, 
-          status: CleanerStatus.UNDER_REVIEW,
+          status: CleanerStatus.BUSINESS_PENDING, // Next step in Flow 2
           verificationCode: undefined,
           verificationCodeExpires: undefined
         } : c
@@ -256,7 +266,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{ 
       cleaners, clients, leads, feedPosts, supportRequests, bonusCampaigns, userRole, setUserRole, 
       pendingClientCode, pendingClientEmail,
-      registerCleaner, verifyCleanerCode, resendCleanerCode, resendClientCode, registerClient, verifyUserEmail, verifyCleaner, rejectCleaner, deleteCleaner,
+      registerCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode, resendClientCode, registerClient, verifyUserEmail, verifyCleaner, rejectCleaner, deleteCleaner,
       activateSubscription, addCleanerPoints, createBonusCampaign, deleteBonusCampaign, searchCleaners, createLead, deleteLead, acceptLead, 
       createFeedPost, deleteFeedPost, createSupportRequest, updateSupportStatus, 
       addPortfolioItem, updatePortfolioStatus,

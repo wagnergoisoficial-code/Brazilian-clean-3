@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -12,6 +13,8 @@ import VerifyEmail from './pages/VerifyEmail';
 import Support from './pages/Support';
 import BrianAI from './components/BrianAI';
 import MockEmailService from './components/MockEmailService';
+import CleanerBusinessConfig from './pages/CleanerBusinessConfig';
+import DocumentVerification from './pages/DocumentVerification';
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
@@ -28,6 +31,11 @@ const AppRoutes = () => {
             <Route path="/express" element={<ExpressMatch />} />
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/support" element={<Support />} />
+            
+            {/* New Onboarding Flow Routes */}
+            <Route path="/setup-business" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerBusinessConfig /></ProtectedRoute>} />
+            <Route path="/verify-documents" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><DocumentVerification /></ProtectedRoute>} />
+
             <Route path="/admin" element={<ProtectedRoute allowedRole={UserRole.ADMIN}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerDashboard /></ProtectedRoute>} />
         </Routes>
