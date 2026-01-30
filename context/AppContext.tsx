@@ -16,7 +16,8 @@ interface AppContextType {
   pendingClientCode: string | null;
   pendingClientEmail: string | null;
   setUserRole: (role: UserRole) => void;
-  registerCleaner: (fullName: string, email: string) => Promise<string>;
+  registerCleaner: (data: Partial<CleanerProfile>) => Promise<string>;
+  loginCleaner: (email: string, password: string) => Promise<CleanerProfile | null>;
   updateCleanerProfile: (id: string, data: Partial<CleanerProfile>) => void;
   verifyCleanerCode: (cleanerId: string, code: string) => boolean;
   resendCleanerCode: (cleanerId: string) => Promise<void>;
@@ -80,7 +81,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // PERSISTENCE WITH SECURITY FILTERING
   useEffect(() => { 
     const filteredCleaners = cleaners.map(c => {
-        // Filter out large binary/base64 strings from local persistence
         const { 
           documentFrontUrl, 
           documentBackUrl, 
@@ -120,23 +120,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (e) { return "123456"; }
   };
 
-  const registerCleaner = async (fullName: string, email: string): Promise<string> => {
+  const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    const code = await requestVerificationEmail(email, 'pt');
+    const code = await requestVerificationEmail(data.email || '', 'pt');
     const newCleaner: CleanerProfile = {
-      id, fullName, email,
+      id, 
+      fullName: data.fullName || '', 
+      email: data.email || '',
+      password: data.password || '',
+      phone: data.phone || '',
+      city: data.city || '',
+      state: data.state || '',
+      zipCodes: data.zipCodes || [],
       status: CleanerStatus.EMAIL_PENDING,
-      rating: 0, reviewCount: 0,
+      rating: 0, 
+      reviewCount: 0,
       joinedDate: new Date().toISOString(),
       emailVerified: false,
       verificationCode: code,
       verificationCodeExpires: Date.now() + 600000,
-      points: 0, level: CleanerLevel.BRONZE, pointHistory: [],
-      portfolio: [], galleryUrls: [], services: [], zipCodes: [],
-      phone: '', city: '', state: '', companyName: '', isCompany: false, yearsExperience: 0, description: '', photoUrl: ''
+      points: 0, 
+      level: CleanerLevel.BRONZE, 
+      pointHistory: [],
+      portfolio: [], 
+      galleryUrls: [], 
+      services: [],
+      companyName: '', 
+      isCompany: false, 
+      yearsExperience: 0, 
+      description: '', 
+      photoUrl: ''
     };
     setCleaners(prev => [...prev, newCleaner]);
     return id;
+  };
+
+  const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
+      const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+      if (cleaner) {
+          setAuthenticatedCleanerId(cleaner.id);
+          setUserRole(UserRole.CLEANER);
+          return cleaner;
+      }
+      return null;
   };
 
   const updateCleanerProfile = (id: string, data: Partial<CleanerProfile>) => {
@@ -204,7 +230,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{ 
       cleaners, clients, leads, feedPosts, supportRequests, bonusCampaigns, userRole, setUserRole, 
       authenticatedCleanerId, authenticatedClientId, pendingClientCode, pendingClientEmail,
-      registerCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode: async () => {}, resendClientCode: async () => {}, 
+      registerCleaner, loginCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode: async () => {}, resendClientCode: async () => {}, 
       registerClient, updateClientProfile, logout, verifyCleaner, rejectCleaner, deleteCleaner,
       activateSubscription, addCleanerPoints, searchCleaners, createLead, deleteLead, acceptLead, 
       createSupportRequest: () => {}, updateSupportStatus: () => {}, 

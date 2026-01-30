@@ -136,6 +136,7 @@ export interface CleanerProfile {
   fullName: string;
   phone: string;
   email: string;
+  password?: string; // Encrypted/hashed in production
   city: string;
   state: string;
   companyName: string;
@@ -170,6 +171,7 @@ export interface ClientProfile {
   id: string;
   fullName: string;
   email: string;
+  password?: string;
   phone: string;
   emailVerified: boolean;
   verificationCode?: string;
