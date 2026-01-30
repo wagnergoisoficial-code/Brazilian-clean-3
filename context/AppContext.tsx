@@ -296,10 +296,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const searchCleaners = (zip: string, serviceKey?: string): CleanerProfile[] => {
     const targetZip = zip.trim().substring(0, 5);
     if (targetZip.length < 5) return [];
+
     return cleaners.filter(cleaner => {
+      // RULE: Only approved, public, and listed profiles appear
+      const isPubliclyVisible = cleaner.status === CleanerStatus.VERIFIED && cleaner.isListed === true;
+      if (!isPubliclyVisible) return false;
+
+      // RULE: ZIP/Radius Matching
       if (!canCleanerServeZip(cleaner, targetZip)) return false;
+
+      // RULE: Service Matching (Unified Keys)
       if (serviceKey && serviceKey !== 'All' && !cleaner.services.includes(serviceKey)) return false;
-      return !!cleaner.phone && cleaner.isListed !== false && [CleanerStatus.VERIFIED, CleanerStatus.UNDER_REVIEW].includes(cleaner.status);
+
+      return true;
     });
   };
 

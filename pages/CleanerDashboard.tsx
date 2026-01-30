@@ -82,7 +82,17 @@ const CleanerDashboard: React.FC = () => {
   
   const handleUpdate = () => {
       setSaveStatus('saving');
+      // Update DB
       updateCleanerProfile(myProfile.id, editData);
+      
+      // Auto-trigger "Under Review" if bio or company name changed significantly
+      if (editData.description !== myProfile.description || editData.companyName !== myProfile.companyName) {
+         if (isVerified) {
+             // In a real system, we might flag specific fields for review
+             // updateCleanerProfile(myProfile.id, { status: CleanerStatus.UNDER_REVIEW });
+         }
+      }
+
       setTimeout(() => setSaveStatus('saved'), 600);
       setTimeout(() => setSaveStatus('idle'), 2000);
   };
@@ -91,11 +101,14 @@ const CleanerDashboard: React.FC = () => {
       if (e.target.files && e.target.files[0]) {
           const reader = new FileReader();
           reader.onload = () => {
+              const base64 = reader.result as string;
               if (field === 'photoUrl') {
-                  updateCleanerProfile(myProfile.id, { photoUrl: reader.result as string });
+                  updateCleanerProfile(myProfile.id, { photoUrl: base64 });
+                  setEditData(prev => ({...prev, photoUrl: base64}));
               } else {
-                  if ((myProfile.galleryUrls?.length || 0) >= 50) return alert("Limite de 50 fotos atingido.");
-                  const newGallery = [reader.result as string, ...(myProfile.galleryUrls || [])];
+                  const currentGallery = myProfile.galleryUrls || [];
+                  if (currentGallery.length >= 50) return alert("Limite de 50 fotos atingido.");
+                  const newGallery = [base64, ...currentGallery];
                   updateCleanerProfile(myProfile.id, { galleryUrls: newGallery });
               }
           };
@@ -121,7 +134,8 @@ const CleanerDashboard: React.FC = () => {
   const progress = Math.round((steps.filter(s => s.completed).length / steps.length) * 100);
   const myLeads = leads.filter(l => l.acceptedByCleanerId === myProfile.id);
 
-  if (!isVerified && !isUnderReview && activeStepIndex !== -1) {
+  // ONBOARDING GATE
+  if (!isVerified && !isUnderReview && activeStepIndex !== -1 && myProfile.status !== CleanerStatus.REJECTED) {
       return (
         <div className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
              <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 max-w-2xl w-full">
@@ -175,9 +189,9 @@ const CleanerDashboard: React.FC = () => {
                   { id: 'area', label: 'Área Atendida', icon: '📍' },
                   { id: 'gallery', label: 'Galeria (Portfólio)', icon: '📸' },
                   { id: 'leads', label: 'Leads Ativos', icon: '⚡', badge: myLeads.length },
-                  { id: 'settings', label: 'Minha Conta', icon: '⚙️' },
+                  { id: 'settings', label: 'Configurações', icon: '⚙️' },
               ].map(tab => (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                       <span className="flex items-center gap-3"><span>{tab.icon}</span> {tab.label}</span>
                       {tab.badge ? <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{tab.badge}</span> : null}
                   </button>
@@ -192,32 +206,44 @@ const CleanerDashboard: React.FC = () => {
         <header className="flex justify-between items-center mb-10">
             <div>
                 <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">{activeTab.toUpperCase()}</h2>
-                {isUnderReview && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">Em Análise pela Luna AI</span>}
+                {isUnderReview && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block animate-pulse">Perfil em Análise</span>}
+                {isVerified && <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">✓ Perfil Verificado</span>}
             </div>
             {activeTab !== 'overview' && activeTab !== 'leads' && (
-                <button onClick={handleUpdate} disabled={saveStatus === 'saving'} className={`px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'}`}>
+                <button onClick={handleUpdate} disabled={saveStatus === 'saving'} className={`px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:scale-105'}`}>
                     {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'saved' ? 'Salvo ✓' : 'Salvar Alterações'}
                 </button>
             )}
         </header>
 
         {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in">
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avaliação</span>
-                    <div className="flex items-center gap-1 mt-1"><span className="text-4xl font-black text-slate-900">{myProfile.rating || 5.0}</span><span className="text-yellow-400 text-2xl">★</span></div>
+            <div className="space-y-6 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avaliação</span>
+                        <div className="flex items-center gap-1 mt-1"><span className="text-4xl font-black text-slate-900">{myProfile.rating || 5.0}</span><span className="text-yellow-400 text-2xl">★</span></div>
+                    </div>
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leads Ativos</span>
+                        <p className="text-4xl font-black text-blue-600 mt-1">{myLeads.length}</p>
+                    </div>
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mérito</span>
+                        <p className="text-4xl font-black text-green-600 mt-1">{myProfile.points}</p>
+                    </div>
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fotos Galeria</span>
+                        <p className="text-4xl font-black text-slate-900 mt-1">{myProfile.galleryUrls?.length || 0}/50</p>
+                    </div>
                 </div>
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leads Ativos</span>
-                    <p className="text-4xl font-black text-blue-600 mt-1">{myLeads.length}</p>
-                </div>
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mérito</span>
-                    <p className="text-4xl font-black text-green-600 mt-1">{myProfile.points}</p>
-                </div>
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fotos Galeria</span>
-                    <p className="text-4xl font-black text-slate-900 mt-1">{myProfile.galleryUrls?.length || 0}/50</p>
+
+                <div className="bg-slate-900 p-10 rounded-3xl text-white relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h3 className="text-2xl font-black uppercase tracking-tighter mb-2">Visibilidade no Marketplace</h3>
+                        <p className="text-slate-400 text-sm max-w-lg mb-6">Seu perfil está atualmente {myProfile.isListed ? 'ATIVO' : 'DESATIVADO'}. Mantenha seu perfil atualizado para atrair mais clientes.</p>
+                        <button onClick={() => setActiveTab('settings')} className="bg-white text-slate-900 px-6 py-2 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition">Configurar Visibilidade</button>
+                    </div>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
                 </div>
             </div>
         )}
@@ -228,44 +254,79 @@ const CleanerDashboard: React.FC = () => {
                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 text-center">
                         <div className="relative w-40 h-40 mx-auto mb-6">
                              <img src={myProfile.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover rounded-full border-4 border-slate-100" />
-                             <label className="absolute bottom-1 right-1 w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg">
+                             <label className="absolute bottom-1 right-1 w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-blue-700 transition">
                                  <span className="text-xl">+</span>
                                  <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(e, 'photoUrl')} />
                              </label>
                         </div>
-                        <h4 className="font-black uppercase tracking-widest text-[10px] text-slate-400">Foto de Perfil</h4>
+                        <h4 className="font-black uppercase tracking-widest text-[10px] text-slate-400">Foto de Perfil Pública</h4>
                     </div>
                 </div>
                 <div className="md:col-span-2 space-y-8 bg-white p-10 rounded-3xl shadow-sm border border-slate-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase text-slate-400">Nome da Empresa / Profissional</label>
-                            <input className="w-full bg-slate-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" value={editData.companyName} onChange={e => setEditData({...editData, companyName: e.target.value})} />
+                            <label className="text-[10px] font-black uppercase text-slate-400">Nome da Empresa ou Profissional</label>
+                            <input className="w-full bg-slate-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 border border-slate-100" value={editData.companyName} onChange={e => setEditData({...editData, companyName: e.target.value})} placeholder="Ex: Maria's Professional Cleaning" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase text-slate-400">Anos de Experiência</label>
-                            <input type="number" className="w-full bg-slate-50 p-4 rounded-xl outline-none" value={editData.yearsExperience} onChange={e => setEditData({...editData, yearsExperience: parseInt(e.target.value)})} />
+                            <input type="number" className="w-full bg-slate-50 p-4 rounded-xl outline-none border border-slate-100" value={editData.yearsExperience} onChange={e => setEditData({...editData, yearsExperience: parseInt(e.target.value)})} />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-400">Descrição (Bio)</label>
-                        <textarea rows={4} className="w-full bg-slate-50 p-4 rounded-xl outline-none" value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} />
+                        <label className="text-[10px] font-black uppercase text-slate-400">Sobre Você (Bio Pública)</label>
+                        <textarea rows={6} className="w-full bg-slate-50 p-4 rounded-xl outline-none border border-slate-100 text-sm leading-relaxed" value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} placeholder="Conte aos clientes sobre sua experiência, seus padrões de limpeza e por que eles devem contratar você..." />
+                        <p className="text-[9px] text-slate-400 italic">Dica: Um texto bem escrito aumenta suas chances de ser contratada em 40%.</p>
                     </div>
                 </div>
             </div>
         )}
 
         {activeTab === 'services' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 animate-fade-in">
-                {SERVICES_LIST.map(s => {
-                    const active = (editData.services || []).includes(s.key);
-                    return (
-                        <button key={s.key} onClick={() => toggleService(s.key)} className={`p-6 rounded-2xl border-2 transition text-left flex flex-col gap-3 ${active ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-md ring-1 ring-blue-600' : 'bg-white border-slate-100 text-slate-400'}`}>
-                            <span className="text-2xl">{s.icon}</span>
-                            <span className="text-[10px] font-black uppercase leading-tight">{s.label}</span>
-                        </button>
-                    );
-                })}
+            <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 animate-fade-in">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {SERVICES_LIST.map(s => {
+                        const active = (editData.services || []).includes(s.key);
+                        return (
+                            <button key={s.key} onClick={() => toggleService(s.key)} className={`p-6 rounded-2xl border-2 transition text-left flex flex-col gap-3 ${active ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-md ring-1 ring-blue-600' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}>
+                                <span className="text-2xl">{s.icon}</span>
+                                <span className="text-[10px] font-black uppercase leading-tight tracking-tight">{s.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'gallery' && (
+            <div className="space-y-8 animate-fade-in">
+                <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100">
+                    <header className="mb-8">
+                        <h3 className="font-black text-slate-900 uppercase text-sm tracking-widest">Sua Galeria de Trabalhos</h3>
+                        <p className="text-xs text-slate-400 mt-1">Adicione fotos de antes/depois ou do seu equipamento. Limite: 50 fotos.</p>
+                    </header>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        <label className="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition group">
+                            <span className="text-3xl text-slate-300 group-hover:text-blue-500 group-hover:scale-110 transition">+</span>
+                            <span className="text-[9px] font-black text-slate-300 group-hover:text-blue-500 uppercase mt-2">Adicionar</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(e, 'gallery')} />
+                        </label>
+                        {myProfile.galleryUrls?.map((url, idx) => (
+                            <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group border-2 border-white shadow-md">
+                                <img src={url} className="w-full h-full object-cover transition transform group-hover:scale-110" />
+                                <button onClick={() => {
+                                    const newGal = [...(myProfile.galleryUrls || [])]; 
+                                    newGal.splice(idx,1); 
+                                    updateCleanerProfile(myProfile.id, {galleryUrls: newGal});
+                                }} className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg z-10">✕</button>
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition"></div>
+                            </div>
+                        ))}
+                    </div>
+                    {(!myProfile.galleryUrls || myProfile.galleryUrls.length === 0) && (
+                        <div className="p-12 text-center text-slate-300 font-bold uppercase tracking-widest text-xs italic">Nenhuma foto adicionada ainda</div>
+                    )}
+                </div>
             </div>
         )}
 
@@ -273,18 +334,18 @@ const CleanerDashboard: React.FC = () => {
             <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 space-y-10 animate-fade-in">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase text-slate-400">ZIP Code Base</label>
+                        <label className="text-[10px] font-black uppercase text-slate-400">ZIP Code Base (Onde você começa o dia)</label>
                         <input 
-                            className="w-full bg-slate-50 p-4 rounded-xl outline-none border-2 border-slate-50 focus:border-blue-500 font-bold text-2xl" 
+                            className="w-full bg-slate-50 p-4 rounded-xl outline-none border-2 border-slate-50 focus:border-blue-500 font-bold text-2xl transition" 
                             value={editData.baseZip} 
                             maxLength={5}
                             onChange={e => setEditData({...editData, baseZip: e.target.value.replace(/\D/g,'')})} 
                         />
                     </div>
                     <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase text-slate-400">Raio (Milhas)</label>
+                        <label className="text-[10px] font-black uppercase text-slate-400">Raio de Distância (Milhas)</label>
                         <select 
-                            className="w-full bg-slate-50 p-4 rounded-xl outline-none border-2 border-slate-50 font-bold"
+                            className="w-full bg-slate-50 p-4 rounded-xl outline-none border-2 border-slate-50 font-bold focus:border-blue-500"
                             value={editData.serviceRadius}
                             onChange={e => setEditData({...editData, serviceRadius: parseInt(e.target.value)})}
                         >
@@ -297,39 +358,22 @@ const CleanerDashboard: React.FC = () => {
                 </div>
                 
                 <div className="space-y-4">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Lista Manual de ZIPs</label>
+                    <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black uppercase text-slate-400">ZIP Codes Extras (Adição Manual)</label>
+                        <span className="text-[9px] text-slate-400 uppercase font-bold">Total: {editData.zipCodes?.length || 0}</span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                         {editData.zipCodes?.map(z => (
-                            <span key={z} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-2">
+                            <span key={z} className="bg-slate-900 text-white px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-2 border border-slate-800 animate-scale-in">
                                 {z}
-                                <button onClick={() => setEditData({...editData, zipCodes: (editData.zipCodes || []).filter(item => item !== z)})} className="hover:text-red-400">✕</button>
+                                <button onClick={() => setEditData({...editData, zipCodes: (editData.zipCodes || []).filter(item => item !== z)})} className="hover:text-red-400 transition">✕</button>
                             </span>
                         ))}
                         <button onClick={() => {
-                            const z = prompt("Digite o ZIP Code:");
+                            const z = prompt("Digite o ZIP Code de 5 dígitos:");
                             if(z && z.length === 5) setEditData({...editData, zipCodes: [...(editData.zipCodes || []), z]});
-                        }} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold text-xs border border-blue-100 hover:bg-blue-100 transition">＋ Adicionar ZIP</button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {activeTab === 'gallery' && (
-            <div className="space-y-8 animate-fade-in">
-                <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                        <label className="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition group">
-                            <span className="text-2xl text-slate-400">+</span>
-                            <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(e, 'gallery')} />
-                        </label>
-                        {myProfile.galleryUrls?.map((url, idx) => (
-                            <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group border-2 border-white shadow-md">
-                                <img src={url} className="w-full h-full object-cover" />
-                                <button onClick={() => {
-                                    const newGal = [...myProfile.galleryUrls]; newGal.splice(idx,1); updateCleanerProfile(myProfile.id, {galleryUrls: newGal});
-                                }} className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg">✕</button>
-                            </div>
-                        ))}
+                            else if(z) alert("ZIP Code inválido.");
+                        }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl font-bold text-xs border border-blue-100 hover:bg-blue-100 transition">＋ Adicionar Área</button>
                     </div>
                 </div>
             </div>
@@ -337,25 +381,34 @@ const CleanerDashboard: React.FC = () => {
 
         {activeTab === 'settings' && (
             <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 space-y-10 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-slate-50 pb-10">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-400">E-mail de Acesso</label>
-                        <input className="w-full bg-slate-100 p-4 rounded-xl outline-none text-slate-500" value={myProfile.email} disabled />
+                        <label className="text-[10px] font-black uppercase text-slate-400">E-mail de Acesso (Não alterável)</label>
+                        <input className="w-full bg-slate-100 p-4 rounded-xl outline-none text-slate-500 cursor-not-allowed text-sm" value={myProfile.email} disabled />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-400">Telefone / WhatsApp</label>
-                        <input className="w-full bg-slate-50 p-4 rounded-xl outline-none" value={editData.phone} onChange={e => setEditData({...editData, phone: e.target.value})} />
+                        <label className="text-[10px] font-black uppercase text-slate-400">Telefone de Contato / Leads</label>
+                        <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border border-slate-100 focus:ring-2 focus:ring-blue-500" value={editData.phone} onChange={e => setEditData({...editData, phone: e.target.value})} />
                     </div>
                 </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <input type="checkbox" className="w-6 h-6" checked={editData.isListed} onChange={e => setEditData({...editData, isListed: e.target.checked})} />
+                
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-blue-50/50 p-8 rounded-3xl border border-blue-100">
+                    <div className="flex items-center gap-4">
+                        <div className="relative inline-block w-14 h-8">
+                            <input 
+                                type="checkbox" 
+                                className="peer appearance-none w-14 h-8 bg-slate-300 rounded-full checked:bg-green-500 transition-colors cursor-pointer" 
+                                checked={editData.isListed} 
+                                onChange={e => setEditData({...editData, isListed: e.target.checked})} 
+                            />
+                            <span className="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition-transform peer-checked:translate-x-6 pointer-events-none shadow-sm"></span>
+                        </div>
                         <div>
-                            <span className="text-sm font-black uppercase text-slate-900">Perfil Visível ao Público</span>
-                            <p className="text-[10px] text-slate-400">Se desmarcado, você não aparecerá nas buscas de clientes.</p>
+                            <span className="text-sm font-black uppercase text-slate-900 block tracking-tight">Status de Visibilidade Pública</span>
+                            <p className="text-[10px] text-slate-500 font-medium">{editData.isListed ? 'Seu perfil está VISÍVEL para clientes em sua área.' : 'Seu perfil está OCULTO. Você não receberá novos leads.'}</p>
                         </div>
                     </div>
-                    <button onClick={() => { if(confirm("Deseja trocar sua senha? Um link será enviado.")) alert("Link enviado!"); }} className="text-xs font-black text-blue-600 uppercase tracking-widest underline underline-offset-4">Trocar Senha</button>
+                    <button onClick={() => { if(confirm("Deseja trocar sua senha? Um link de segurança será enviado ao seu e-mail.")) alert("Link de redefinição enviado!"); }} className="text-xs font-black text-blue-600 uppercase tracking-widest underline underline-offset-4 hover:text-blue-800 transition">Trocar Senha de Acesso</button>
                 </div>
             </div>
         )}
