@@ -58,6 +58,8 @@ interface AppContextType {
   updateTeamMemberStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED', adminId: string) => void;
   removeTeamMember: (id: string, adminId: string) => void;
   addAuditLog: (log: Omit<AuditLog, 'id' | 'timestamp'>) => void;
+  // Auth Extensions
+  requestPasswordReset: (email: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -145,6 +147,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       timestamp: new Date().toISOString()
     };
     setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase());
+    if (!cleaner) throw new Error("Este e-mail não está cadastrado em nossa base.");
+
+    setLastEmail({
+      to: cleaner.email,
+      subject: 'Recuperação de Senha - Brazilian Clean',
+      body: `Olá ${cleaner.fullName}, você solicitou a recuperação de sua senha. Clique no botão abaixo para definir uma nova senha de acesso.`,
+      actionLink: `/join`, // In a real app this would be a unique token link
+      actionText: 'Redefinir Senha'
+    });
   };
 
   const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
@@ -302,16 +317,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     console.log(`[Search Logic] Querying for ZIP: ${targetZip} Service: ${serviceKey || 'All'}`);
 
     const results = cleaners.filter(cleaner => {
-      // RULE: Only approved, public, and listed profiles appear
-      // In development/test we show UNDER_REVIEW too if explicitly needed, but following prompt "approved"
       const isPubliclyVisible = (cleaner.status === CleanerStatus.VERIFIED || cleaner.status === CleanerStatus.UNDER_REVIEW) && cleaner.isListed === true;
       if (!isPubliclyVisible) return false;
 
-      // RULE: ZIP/Radius Matching (Unified Location Service)
       const isServing = canCleanerServeZip(cleaner, targetZip);
       if (!isServing) return false;
 
-      // RULE: Service Matching
       if (serviceKey && serviceKey !== 'All' && !cleaner.services.includes(serviceKey)) return false;
 
       return true;
@@ -340,7 +351,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPendingClientCodeExpires(Date.now() + VERIFICATION_TTL);
     setPendingClientEmail(l.clientEmail || '');
     
-    // BROADCAST LOGIC: Find all eligible cleaners
     const matchingCleanerIds = cleaners
       .filter(c => c.status !== CleanerStatus.REJECTED && canCleanerServeZip(c, targetZip))
       .map(c => c.id);
@@ -357,7 +367,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setLeads(p => [newLead, ...p]);
 
-    // Update Cleaner Notification Counts
     setCleaners(prev => prev.map(c => 
       matchingCleanerIds.includes(c.id) 
         ? { ...c, notificationCount: (c.notificationCount || 0) + 1 }
@@ -380,7 +389,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const acceptLead = (lid: string, cid: string) => {
     setLeads(p => p.map(l => l.id === lid ? {...l, status: 'ACCEPTED', acceptedByCleanerId: cid} : l));
     addCleanerPoints(cid, 10, 'Lead Accepted');
-    // Clear notification for this cleaner
     setCleaners(prev => prev.map(c => c.id === cid ? { ...c, notificationCount: Math.max(0, (c.notificationCount || 0) - 1) } : c));
   };
 
@@ -416,7 +424,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       activateSubscription, addCleanerPoints, searchCleaners, createLead, deleteLead, acceptLead, 
       createSupportRequest, updateSupportStatus, addPortfolioItem, updatePortfolioStatus,
       isChatOpen, setIsChatOpen, lastEmail, clearLastEmail: () => setLastEmail(null),
-      inviteTeamMember, updateTeamMemberStatus, removeTeamMember, addAuditLog
+      inviteTeamMember, updateTeamMemberStatus, removeTeamMember, addAuditLog,
+      requestPasswordReset
     }}>
       {children}
     </AppContext.Provider>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { CleanerStatus, CleanerLevel, CleanerProfile, Lead } from '../types';
@@ -46,7 +47,7 @@ const SERVICES_LIST = [
 type DashboardTab = 'overview' | 'profile' | 'services' | 'gallery' | 'leads' | 'reviews' | 'settings' | 'documents' | 'area';
 
 const CleanerDashboard: React.FC = () => {
-  const { cleaners, authenticatedCleanerId, logout, updateCleanerProfile, leads, acceptLead } = useAppContext();
+  const { cleaners, authenticatedCleanerId, logout, updateCleanerProfile, leads, acceptLead, requestPasswordReset } = useAppContext();
   const navigate = useNavigate();
   const myProfile = cleaners.find(c => c.id === authenticatedCleanerId);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
@@ -86,6 +87,17 @@ const CleanerDashboard: React.FC = () => {
       updateCleanerProfile(myProfile.id, editData);
       setTimeout(() => setSaveStatus('saved'), 600);
       setTimeout(() => setSaveStatus('idle'), 2000);
+  };
+
+  const handlePasswordChange = async () => {
+      if(confirm("Deseja trocar sua senha? Um link de segurança será enviado ao seu e-mail.")) {
+          try {
+              await requestPasswordReset(myProfile.email);
+              alert("Link de redefinição enviado! Verifique o simulador de e-mail.");
+          } catch (e: any) {
+              alert(e.message);
+          }
+      }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'photoUrl' | 'gallery') => {
@@ -471,7 +483,7 @@ const CleanerDashboard: React.FC = () => {
                             <p className="text-[10px] text-slate-500 font-medium">{editData.isListed ? 'Seu perfil está VISÍVEL para clientes.' : 'Seu perfil está OCULTO.'}</p>
                         </div>
                     </div>
-                    <button onClick={() => { if(confirm("Deseja trocar sua senha? Um link de segurança será enviado ao seu e-mail.")) alert("Link de redefinição enviado!"); }} className="text-xs font-black text-blue-600 uppercase tracking-widest underline underline-offset-4 hover:text-blue-800 transition">Trocar Senha</button>
+                    <button onClick={handlePasswordChange} className="text-xs font-black text-blue-600 uppercase tracking-widest underline underline-offset-4 hover:text-blue-800 transition">Trocar Senha</button>
                 </div>
             </div>
         )}
