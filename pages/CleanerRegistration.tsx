@@ -1,28 +1,34 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { CleanerStatus } from '../types';
 
 const CleanerRegistration: React.FC = () => {
-  const { registerCleaner, loginCleaner, requestPasswordReset } = useAppContext();
+  const { registerCleaner, loginCleaner, requestPasswordReset, authenticatedCleanerId, cleaners } = useAppContext();
   const navigate = useNavigate();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [redirectTarget, setRedirectTarget] = useState<{status: CleanerStatus, id: string} | null>(null);
   
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    phone: '',
-    city: '',
-    state: '',
-    zipCode: ''
+    fullName: '', email: '', password: '', phone: '', city: '', state: '', zipCode: ''
   });
 
-  const handleRedirect = (status: CleanerStatus, id: string) => {
+  // CRITICAL: Ensure authenticated users are moved out of this screen immediately and safely
+  useEffect(() => {
+    if (authenticatedCleanerId) {
+      const cleaner = cleaners.find(c => c.id === authenticatedCleanerId);
+      if (cleaner) navigate('/dashboard');
+    }
+  }, [authenticatedCleanerId, navigate, cleaners]);
+
+  // Handle redirects in useEffect to prevent DOM removeChild errors during render
+  useEffect(() => {
+    if (redirectTarget) {
+      const { status, id } = redirectTarget;
       switch(status) {
           case CleanerStatus.EMAIL_PENDING: navigate(`/verify?id=${id}`); break;
           case CleanerStatus.BUSINESS_PENDING: navigate(`/setup-business?id=${id}`); break;
@@ -31,7 +37,8 @@ const CleanerRegistration: React.FC = () => {
           case CleanerStatus.DOCUMENTS_PENDING: navigate(`/verify-documents?id=${id}`); break;
           default: navigate('/dashboard');
       }
-  };
+    }
+  }, [redirectTarget, navigate]);
 
   const handleForgotPassword = async () => {
       if (!formData.email) {
@@ -40,7 +47,7 @@ const CleanerRegistration: React.FC = () => {
       }
       try {
           await requestPasswordReset(formData.email);
-          alert("Um link de recuperação foi enviado para seu e-mail (Verifique o simulador no canto superior direito).");
+          alert("Um link de recuperação foi enviado para seu e-mail (Verifique o simulador).");
       } catch (err: any) {
           alert(err.message);
       }
@@ -48,15 +55,17 @@ const CleanerRegistration: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     
     try {
         if (isLoginMode) {
             const cleaner = await loginCleaner(formData.email, formData.password);
             if (cleaner) {
-                handleRedirect(cleaner.status, cleaner.id);
+                setRedirectTarget({ status: cleaner.status, id: cleaner.id });
             } else {
                 alert("Email ou senha inválidos.");
+                setIsSubmitting(false);
             }
         } else {
             if(!formData.fullName || !formData.email || !formData.password || !formData.phone) {
@@ -71,13 +80,13 @@ const CleanerRegistration: React.FC = () => {
                 phone: formData.phone,
                 city: formData.city,
                 state: formData.state,
+                baseZip: formData.zipCode,
                 zipCodes: [formData.zipCode]
             });
             navigate(`/verify?id=${id}`);
         }
     } catch (err) {
         alert("Ocorreu um erro no sistema. Tente novamente.");
-    } finally {
         setIsSubmitting(false);
     }
   };
@@ -96,8 +105,9 @@ const CleanerRegistration: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          {/* Use stable keys on wrappers to prevent React from confusing DOM nodes during mode switch */}
           {!isLoginMode ? (
-            <div className="space-y-6 animate-fade-in">
+            <div key="signup-fields" className="space-y-6 animate-fade-in">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Nome Completo</label>
@@ -145,7 +155,7 @@ const CleanerRegistration: React.FC = () => {
                 </div>
             </div>
           ) : (
-            <div className="space-y-6 animate-fade-in">
+            <div key="login-fields" className="space-y-6 animate-fade-in">
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">E-mail Cadastrado</label>
                 <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" />

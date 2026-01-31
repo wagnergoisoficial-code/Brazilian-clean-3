@@ -22,7 +22,16 @@ import ClientSettings from './pages/ClientSettings';
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
-    const { userRole, authenticatedCleanerId, authenticatedClientId } = useAppContext();
+    const { userRole, authenticatedCleanerId, authenticatedClientId, isHydrated } = useAppContext();
+    
+    // While hydrating, show a subtle loading screen to prevent DOM unmount races
+    if (!isHydrated) {
+        return (
+            <div className="min-h-screen bg-teal-50 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
     
     if (allowedRole === UserRole.CLEANER && !authenticatedCleanerId) return <Navigate to="/join" replace />;
     if (allowedRole === UserRole.CLIENT && !authenticatedClientId && window.location.hash.includes('settings')) return <Navigate to="/" replace />;

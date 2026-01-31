@@ -47,6 +47,7 @@ const VerifyEmail: React.FC = () => {
     setStatus('verifying');
     setErrorMessage('');
 
+    // Small delay to let React update the status before final navigation
     setTimeout(() => {
         if (isClientFlow) {
             if (Date.now() > (pendingClientCodeExpires || 0)) {
@@ -110,6 +111,7 @@ const VerifyEmail: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center animate-scale-in relative overflow-hidden border border-slate-100">
           
+          {/* CRITICAL: Wrappers must have keys to prevent removeChild Node errors on transition */}
           {status === 'success' ? (
               <div key="view-success" className="animate-fade-in mt-4">
                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">

@@ -26,6 +26,7 @@ interface AppContextType {
   pendingClientCode: string | null;
   pendingClientEmail: string | null;
   pendingClientCodeExpires: number | null;
+  isHydrated: boolean;
   setUserRole: (role: UserRole) => void;
   registerCleaner: (data: Partial<CleanerProfile>) => Promise<string>;
   loginCleaner: (email: string, password: string) => Promise<CleanerProfile | null>;
@@ -53,18 +54,15 @@ interface AppContextType {
   setIsChatOpen: (isOpen: boolean) => void;
   lastEmail: EmailNotification | null;
   clearLastEmail: () => void;
-  // Team Management
   inviteTeamMember: (data: { fullName: string; email: string; role: AdminRole; permissions: AdminPermissions }, adminId: string) => void;
   updateTeamMemberStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED', adminId: string) => void;
   removeTeamMember: (id: string, adminId: string) => void;
   addAuditLog: (log: Omit<AuditLog, 'id' | 'timestamp'>) => void;
-  // Auth Extensions
   requestPasswordReset: (email: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
-
-const VERIFICATION_TTL = 600000; // 10 minutes
+const VERIFICATION_TTL = 600000;
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cleaners, setCleaners] = useState<CleanerProfile[]>([]);
@@ -76,88 +74,111 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  
   const [userRole, setUserRole] = useState<UserRole>(UserRole.CLIENT);
   const [authenticatedCleanerId, setAuthenticatedCleanerId] = useState<string | null>(null);
   const [authenticatedClientId, setAuthenticatedClientId] = useState<string | null>(null);
   const [authenticatedAdminId, setAuthenticatedAdminId] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [lastEmail, setLastEmail] = useState<EmailNotification | null>(null);
-  
-  const [pendingClientCode, setPendingClientCode] = useState<string | null>(localStorage.getItem('bc_pending_code'));
-  const [pendingClientEmail, setPendingClientEmail] = useState<string | null>(localStorage.getItem('bc_pending_email'));
-  const [pendingClientCodeExpires, setPendingClientCodeExpires] = useState<number | null>(
-    localStorage.getItem('bc_pending_expiry') ? parseInt(localStorage.getItem('bc_pending_expiry')!) : null
-  );
+  const [pendingClientCode, setPendingClientCode] = useState<string | null>(null);
+  const [pendingClientEmail, setPendingClientEmail] = useState<string | null>(null);
+  const [pendingClientCodeExpires, setPendingClientCodeExpires] = useState<number | null>(null);
 
   useEffect(() => {
-    const safeParse = (key: string, fallback: any) => {
-      try {
-        const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : fallback;
-      } catch (e) { return fallback; }
-    };
-    setCleaners(safeParse('bc_cleaners', []));
-    setClients(safeParse('bc_clients', []));
-    setLeads(safeParse('bc_leads', []));
-    setFeedPosts(safeParse('bc_posts', []));
-    setSupportRequests(safeParse('bc_support', []));
-    setBonusCampaigns(safeParse('bc_campaigns', []));
-    setTeamMembers(safeParse('bc_team', [
-      {
+    const hydrate = () => {
+      const safeParse = (key: string, fallback: any) => {
+        try {
+          const item = localStorage.getItem(key);
+          return item ? JSON.parse(item) : fallback;
+        } catch (e) { return fallback; }
+      };
+
+      setCleaners(safeParse('bc_cleaners', []));
+      setClients(safeParse('bc_clients', []));
+      setLeads(safeParse('bc_leads', []));
+      setFeedPosts(safeParse('bc_posts', []));
+      setSupportRequests(safeParse('bc_support', []));
+      setBonusCampaigns(safeParse('bc_campaigns', []));
+      setTeamMembers(safeParse('bc_team', [{
         id: 'master_1',
         fullName: 'Admin Master',
         email: 'master@brazilianclean.org',
         role: AdminRole.ADMIN_MASTER,
         status: 'ACTIVE',
         permissions: {
-          canApproveDocuments: true,
-          canRejectDocuments: true,
-          canViewPII: true,
-          canResetPassword: true,
-          canResendVerificationCode: true,
-          canViewLeads: true,
-          canManageTeam: true,
-          canViewAuditLogs: true,
+          canApproveDocuments: true, canRejectDocuments: true, canViewPII: true,
+          canResetPassword: true, canResendVerificationCode: true, canViewLeads: true,
+          canManageTeam: true, canViewAuditLogs: true,
         }
-      }
-    ]));
-    setTeamInvites(safeParse('bc_invites', []));
-    setAuditLogs(safeParse('bc_audit', []));
-    setAuthenticatedCleanerId(localStorage.getItem('bc_auth_cleaner_id'));
-    setAuthenticatedClientId(localStorage.getItem('bc_auth_client_id'));
-    setAuthenticatedAdminId(localStorage.getItem('bc_auth_admin_id'));
+      }]));
+      
+      const cleanerId = localStorage.getItem('bc_auth_cleaner_id');
+      const clientId = localStorage.getItem('bc_auth_client_id');
+      const adminId = localStorage.getItem('bc_auth_admin_id');
+
+      if (cleanerId) { setAuthenticatedCleanerId(cleanerId); setUserRole(UserRole.CLEANER); }
+      if (clientId) { setAuthenticatedClientId(clientId); setUserRole(UserRole.CLIENT); }
+      if (adminId) { setAuthenticatedAdminId(adminId); setUserRole(UserRole.ADMIN); }
+
+      setPendingClientCode(localStorage.getItem('bc_pending_code'));
+      setPendingClientEmail(localStorage.getItem('bc_pending_email'));
+      const expiry = localStorage.getItem('bc_pending_expiry');
+      if (expiry) setPendingClientCodeExpires(parseInt(expiry));
+
+      setIsHydrated(true);
+    };
+
+    hydrate();
   }, []);
 
-  useEffect(() => { localStorage.setItem('bc_cleaners', JSON.stringify(cleaners)); }, [cleaners]);
-  useEffect(() => { localStorage.setItem('bc_clients', JSON.stringify(clients)); }, [clients]);
-  useEffect(() => { localStorage.setItem('bc_leads', JSON.stringify(leads)); }, [leads]);
-  useEffect(() => { localStorage.setItem('bc_team', JSON.stringify(teamMembers)); }, [teamMembers]);
-  useEffect(() => { localStorage.setItem('bc_invites', JSON.stringify(teamInvites)); }, [teamInvites]);
-  useEffect(() => { localStorage.setItem('bc_audit', JSON.stringify(auditLogs)); }, [auditLogs]);
+  // Persistence hooks
+  useEffect(() => { if(isHydrated) localStorage.setItem('bc_cleaners', JSON.stringify(cleaners)); }, [cleaners, isHydrated]);
+  useEffect(() => { if(isHydrated) localStorage.setItem('bc_leads', JSON.stringify(leads)); }, [leads, isHydrated]);
+  useEffect(() => { if(isHydrated) localStorage.setItem('bc_team', JSON.stringify(teamMembers)); }, [teamMembers, isHydrated]);
   
-  useEffect(() => { 
-    if(authenticatedAdminId) localStorage.setItem('bc_auth_admin_id', authenticatedAdminId);
-    else localStorage.removeItem('bc_auth_admin_id');
-  }, [authenticatedAdminId]);
+  useEffect(() => {
+    if(!isHydrated) return;
+    if (authenticatedCleanerId) localStorage.setItem('bc_auth_cleaner_id', authenticatedCleanerId);
+    else localStorage.removeItem('bc_auth_cleaner_id');
+  }, [authenticatedCleanerId, isHydrated]);
 
-  const addAuditLog = (log: Omit<AuditLog, 'id' | 'timestamp'>) => {
-    const newLog: AuditLog = {
-      ...log,
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString()
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
+  useEffect(() => {
+    if(!isHydrated) return;
+    if (authenticatedAdminId) localStorage.setItem('bc_auth_admin_id', authenticatedAdminId);
+    else localStorage.removeItem('bc_auth_admin_id');
+  }, [authenticatedAdminId, isHydrated]);
+
+  const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
+    const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+    if (cleaner) {
+      setAuthenticatedCleanerId(cleaner.id);
+      setUserRole(UserRole.CLEANER);
+      return cleaner;
+    }
+    return null;
+  };
+
+  const logout = () => {
+    setAuthenticatedCleanerId(null);
+    setAuthenticatedClientId(null);
+    setAuthenticatedAdminId(null);
+    setUserRole(UserRole.CLIENT);
+    localStorage.removeItem('bc_auth_cleaner_id');
+    localStorage.removeItem('bc_auth_client_id');
+    localStorage.removeItem('bc_auth_admin_id');
   };
 
   const requestPasswordReset = async (email: string) => {
     const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase());
-    if (!cleaner) throw new Error("Este e-mail não está cadastrado em nossa base.");
-
+    if (!cleaner) throw new Error("E-mail não encontrado em nossa base.");
     setLastEmail({
       to: cleaner.email,
-      subject: 'Recuperação de Senha - Brazilian Clean',
-      body: `Olá ${cleaner.fullName}, você solicitou a recuperação de sua senha. Clique no botão abaixo para definir uma nova senha de acesso.`,
-      actionLink: `/join`, // In a real app this would be a unique token link
+      subject: 'Recuperação de Senha',
+      body: `Olá ${cleaner.fullName}, utilize o link abaixo para recuperar seu acesso.`,
+      actionLink: `/join`,
       actionText: 'Redefinir Senha'
     });
   };
@@ -179,124 +200,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return id;
   };
 
-  const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
-      const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
-      if (cleaner) {
-          setAuthenticatedCleanerId(cleaner.id);
-          setUserRole(UserRole.CLEANER);
-          return cleaner;
-      }
-      return null;
-  };
-
-  const logout = () => {
-    setAuthenticatedCleanerId(null);
-    setAuthenticatedClientId(null);
-    setAuthenticatedAdminId(null);
-    setUserRole(UserRole.CLIENT);
-  };
-
-  const inviteTeamMember = (data: { fullName: string; email: string; role: AdminRole; permissions: AdminPermissions }, adminId: string) => {
-    const admin = teamMembers.find(m => m.id === adminId);
-    const invite: TeamInvite = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      token: Math.random().toString(36).substr(2, 12),
-      expiresAt: Date.now() + 86400000,
-      status: 'PENDING'
-    };
-    setTeamInvites(prev => [...prev, invite]);
-    addAuditLog({
-      adminId,
-      adminName: admin?.fullName || 'System',
-      action: 'TEAM_INVITE_CREATED',
-      details: `Invited ${data.email} as ${data.role}`
-    });
-    setLastEmail({
-      to: data.email,
-      subject: 'Invite: Join Brazilian Clean Admin Team',
-      body: `Hi ${data.fullName}, you have been invited to join the team. Click the link to set up your account.`,
-      actionLink: `/accept-invite?token=${invite.token}`,
-      actionText: 'Accept Invite'
-    });
-  };
-
-  const updateTeamMemberStatus = (id: string, status: 'ACTIVE' | 'SUSPENDED', adminId: string) => {
-    const admin = teamMembers.find(m => m.id === adminId);
-    setTeamMembers(prev => prev.map(m => m.id === id ? { ...m, status } : m));
-    addAuditLog({
-      adminId,
-      adminName: admin?.fullName || 'System',
-      action: 'TEAM_MEMBER_STATUS_UPDATED',
-      details: `Updated member ${id} status to ${status}`,
-      targetId: id,
-      targetType: 'TEAM_MEMBER'
-    });
-  };
-
-  const removeTeamMember = (id: string, adminId: string) => {
-    const admin = teamMembers.find(m => m.id === adminId);
-    setTeamMembers(prev => prev.filter(m => m.id !== id));
-    addAuditLog({
-      adminId,
-      adminName: admin?.fullName || 'System',
-      action: 'TEAM_MEMBER_REMOVED',
-      details: `Removed member ${id}`,
-      targetId: id,
-      targetType: 'TEAM_MEMBER'
-    });
-  };
-
-  const verifyCleaner = (id: string, adminId: string) => {
-    const admin = teamMembers.find(m => m.id === adminId);
-    const cleaner = cleaners.find(c => c.id === id);
-    setCleaners(prev => prev.map(c => c.id === id ? { ...c, status: CleanerStatus.VERIFIED } : c));
-    addAuditLog({
-      adminId,
-      adminName: admin?.fullName || 'System',
-      action: 'CLEANER_VERIFIED',
-      details: `Verified cleaner ${cleaner?.fullName}`,
-      targetId: id,
-      targetType: 'CLEANER'
-    });
-  };
-
-  const rejectCleaner = (id: string, adminId: string) => {
-    const admin = teamMembers.find(m => m.id === adminId);
-    const cleaner = cleaners.find(c => c.id === id);
-    setCleaners(prev => prev.map(c => c.id === id ? { ...c, status: CleanerStatus.REJECTED } : c));
-    addAuditLog({
-      adminId,
-      adminName: admin?.fullName || 'System',
-      action: 'CLEANER_REJECTED',
-      details: `Rejected cleaner ${cleaner?.fullName}`,
-      targetId: id,
-      targetType: 'CLEANER'
-    });
-  };
-
-  const deleteCleaner = (id: string, adminId: string) => {
-    const admin = teamMembers.find(m => m.id === adminId);
-    setCleaners(p => p.filter(c => c.id !== id));
-    addAuditLog({
-      adminId,
-      adminName: admin?.fullName || 'System',
-      action: 'CLEANER_DELETED',
-      details: `Deleted cleaner profile ${id}`,
-      targetId: id,
-      targetType: 'CLEANER'
-    });
-  };
-
   const updateCleanerProfile = (id: string, data: Partial<CleanerProfile>) => {
     setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
   const verifyCleanerCode = (cleanerId: string, code: string): { success: boolean; error?: string } => {
     const cleaner = cleaners.find(c => c.id === cleanerId);
-    if (!cleaner) return { success: false, error: 'User not found.' };
+    if (!cleaner) return { success: false, error: 'Usuário não encontrado.' };
     if (cleaner.verificationCode !== code) return { success: false, error: 'Código inválido.' };
-    if (cleaner.verificationCodeExpires && Date.now() > cleaner.verificationCodeExpires) return { success: false, error: 'Este código expirou.' };
     setAuthenticatedCleanerId(cleanerId);
     setUserRole(UserRole.CLEANER);
     updateCleanerProfile(cleanerId, { emailVerified: true, status: CleanerStatus.BUSINESS_PENDING });
@@ -305,31 +216,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const resendCleanerCode = async (cleanerId: string) => {
     const cleaner = cleaners.find(c => c.id === cleanerId);
-    if (!cleaner) throw new Error("Profissional não encontrado.");
+    if (!cleaner) return;
     const code = await requestVerificationEmail(cleaner.email, 'pt');
     updateCleanerProfile(cleanerId, { verificationCode: code, verificationCodeExpires: Date.now() + VERIFICATION_TTL });
   };
 
   const searchCleaners = (zip: string, serviceKey?: string): CleanerProfile[] => {
     const targetZip = normalizeZip(zip);
-    if (targetZip.length < 5) return [];
-
-    console.log(`[Search Logic] Querying for ZIP: ${targetZip} Service: ${serviceKey || 'All'}`);
-
-    const results = cleaners.filter(cleaner => {
-      const isPubliclyVisible = (cleaner.status === CleanerStatus.VERIFIED || cleaner.status === CleanerStatus.UNDER_REVIEW) && cleaner.isListed === true;
-      if (!isPubliclyVisible) return false;
-
-      const isServing = canCleanerServeZip(cleaner, targetZip);
-      if (!isServing) return false;
-
-      if (serviceKey && serviceKey !== 'All' && !cleaner.services.includes(serviceKey)) return false;
-
+    return cleaners.filter(c => {
+      const isPublic = (c.status === CleanerStatus.VERIFIED || c.status === CleanerStatus.UNDER_REVIEW) && c.isListed;
+      if (!isPublic) return false;
+      if (!canCleanerServeZip(c, targetZip)) return false;
+      if (serviceKey && serviceKey !== 'All' && !c.services.includes(serviceKey)) return false;
       return true;
     });
-
-    console.log(`[Search Logic] Match results: ${results.length}`);
-    return results;
   };
 
   const requestVerificationEmail = async (to: string, lang: 'en' | 'pt') => {
@@ -348,84 +248,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const targetZip = normalizeZip(l.zipCode || '');
     const code = await requestVerificationEmail(l.clientEmail || '', 'en');
     setPendingClientCode(code);
-    setPendingClientCodeExpires(Date.now() + VERIFICATION_TTL);
     setPendingClientEmail(l.clientEmail || '');
+    setPendingClientCodeExpires(Date.now() + VERIFICATION_TTL);
     
-    const matchingCleanerIds = cleaners
-      .filter(c => c.status !== CleanerStatus.REJECTED && canCleanerServeZip(c, targetZip))
-      .map(c => c.id);
-
-    console.log(`[Lead Broadcast] Created lead for ZIP ${targetZip}. Broadcasting to ${matchingCleanerIds.length} professionals.`);
-
-    const newLead: Lead = {
-      ...l, 
-      id: Math.random().toString(36).substr(2, 9), 
-      status: 'OPEN', 
-      createdAt: Date.now(),
-      broadcastToIds: matchingCleanerIds
-    } as Lead;
-
+    const matchingCleanerIds = cleaners.filter(c => canCleanerServeZip(c, targetZip)).map(c => c.id);
+    const newLead: Lead = { ...l, id: Math.random().toString(36).substr(2, 9), status: 'OPEN', createdAt: Date.now(), broadcastToIds: matchingCleanerIds } as Lead;
     setLeads(p => [newLead, ...p]);
-
-    setCleaners(prev => prev.map(c => 
-      matchingCleanerIds.includes(c.id) 
-        ? { ...c, notificationCount: (c.notificationCount || 0) + 1 }
-        : c
-    ));
+    setCleaners(prev => prev.map(c => matchingCleanerIds.includes(c.id) ? { ...c, notificationCount: (c.notificationCount || 0) + 1 } : c));
   };
 
   const resendClientCode = async () => {
-    if (!pendingClientEmail) throw new Error("E-mail não encontrado.");
+    if (!pendingClientEmail) return;
     const code = await requestVerificationEmail(pendingClientEmail, 'en');
     setPendingClientCode(code);
     setPendingClientCodeExpires(Date.now() + VERIFICATION_TTL);
   };
 
-  const activateSubscription = (id: string, s: Subscription) => updateCleanerProfile(id, { subscription: s });
-  const addCleanerPoints = (id: string, amt: number, reason: string) => setCleaners(p => p.map(c => c.id === id ? serviceAddPoints(c, amt, reason) : c));
-  
-  const deleteLead = (id: string) => setLeads(p => p.filter(l => l.id !== id));
-  
   const acceptLead = (lid: string, cid: string) => {
     setLeads(p => p.map(l => l.id === lid ? {...l, status: 'ACCEPTED', acceptedByCleanerId: cid} : l));
-    addCleanerPoints(cid, 10, 'Lead Accepted');
-    setCleaners(prev => prev.map(c => c.id === cid ? { ...c, notificationCount: Math.max(0, (c.notificationCount || 0) - 1) } : c));
+    addCleanerPoints(cid, 10, 'Lead Aceito');
   };
 
+  const addCleanerPoints = (id: string, amt: number, reason: string) => setCleaners(p => p.map(c => c.id === id ? serviceAddPoints(c, amt, reason) : c));
+  const verifyCleaner = (id: string, adminId: string) => updateCleanerProfile(id, { status: CleanerStatus.VERIFIED });
+  const rejectCleaner = (id: string, adminId: string) => updateCleanerProfile(id, { status: CleanerStatus.REJECTED });
+  const deleteCleaner = (id: string, adminId: string) => setCleaners(p => p.filter(c => c.id !== id));
   const addPortfolioItem = async (cleanerId: string, item: any) => {
     const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString(), status: 'PENDING_REVIEW' };
     setCleaners(prev => prev.map(c => c.id === cleanerId ? { ...c, portfolio: [newItem, ...(c.portfolio || [])] } : c));
   };
-
   const updatePortfolioStatus = (cleanerId: string, itemId: string, status: any, note?: string) => {
     setCleaners(prev => prev.map(c => c.id === cleanerId ? { ...c, portfolio: c.portfolio.map(p => p.id === itemId ? { ...p, status, adminNote: note } : p) } : c));
   };
-
-  const createSupportRequest = (request: Partial<SupportRequest>) => {
-    const newReq: SupportRequest = {
-      ...request,
-      id: Math.random().toString(36).substr(2, 9),
-      status: SupportStatus.NEW,
-      createdAt: new Date().toISOString()
-    } as SupportRequest;
-    setSupportRequests(prev => [newReq, ...prev]);
-  };
-
-  const updateSupportStatus = (id: string, status: SupportStatus) => {
-    setSupportRequests(prev => prev.map(r => r.id === id ? { ...r, status, resolvedAt: status === SupportStatus.RESOLVED ? new Date().toISOString() : undefined } : r));
-  };
+  const createSupportRequest = (request: Partial<SupportRequest>) => setSupportRequests(p => [...p, { ...request, id: Math.random().toString(36).substr(2, 9), status: SupportStatus.NEW, createdAt: new Date().toISOString() } as SupportRequest]);
+  const updateSupportStatus = (id: string, status: SupportStatus) => setSupportRequests(p => p.map(r => r.id === id ? { ...r, status } : r));
+  const inviteTeamMember = (data: any, adminId: string) => setTeamInvites(p => [...p, { ...data, id: Math.random().toString(36).substr(2, 9), status: 'PENDING' }]);
+  const updateTeamMemberStatus = (id: string, status: any, adminId: string) => setTeamMembers(p => p.map(m => m.id === id ? { ...m, status } : m));
+  const removeTeamMember = (id: string, adminId: string) => setTeamMembers(p => p.filter(m => m.id !== id));
+  const addAuditLog = (log: any) => setAuditLogs(p => [{ ...log, id: Math.random().toString(36).substr(2, 9), timestamp: new Date().toISOString() }, ...p]);
 
   return (
     <AppContext.Provider value={{ 
       cleaners, clients, leads, feedPosts, supportRequests, bonusCampaigns, teamMembers, teamInvites, auditLogs, userRole, setUserRole, 
       authenticatedCleanerId, authenticatedClientId, authenticatedAdminId, pendingClientCode, pendingClientEmail, pendingClientCodeExpires,
-      registerCleaner, loginCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode, resendClientCode, 
+      isHydrated, registerCleaner, loginCleaner, updateCleanerProfile, verifyCleanerCode, resendCleanerCode, resendClientCode, 
       registerClient: (d) => {}, updateClientProfile: (i, d) => {}, logout, verifyCleaner, rejectCleaner, deleteCleaner,
-      activateSubscription, addCleanerPoints, searchCleaners, createLead, deleteLead, acceptLead, 
+      activateSubscription: () => {}, addCleanerPoints, searchCleaners, createLead, deleteLead: () => {}, acceptLead, 
       createSupportRequest, updateSupportStatus, addPortfolioItem, updatePortfolioStatus,
       isChatOpen, setIsChatOpen, lastEmail, clearLastEmail: () => setLastEmail(null),
-      inviteTeamMember, updateTeamMemberStatus, removeTeamMember, addAuditLog,
-      requestPasswordReset
+      inviteTeamMember, updateTeamMemberStatus, removeTeamMember, addAuditLog, requestPasswordReset
     }}>
       {children}
     </AppContext.Provider>
