@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface Props {
@@ -15,17 +15,13 @@ interface State {
  * SystemGuardian component provides a safety layer to catch UI errors.
  * Enhanced with defensive logic to prevent DOM mutation crashes.
  */
-// Fix: Use Component from react import specifically to ensure proper inheritance of state and props
-class SystemGuardian extends Component<Props, State> {
-  // Fix: Initialize state as a class property and remove invalid override modifier
+// Fix: Use React.Component to ensure proper inheritance and access to this.props and this.state
+class SystemGuardian extends React.Component<Props, State> {
+  // Fix: Initialize state as a class property with explicit type
   state: State = {
     hasError: false,
     error: null
   };
-
-  constructor(props: Props) {
-    super(props);
-  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -36,7 +32,7 @@ class SystemGuardian extends Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Fix: Access state and props via this.state and this.props to resolve property existence errors
+    // Fix: Access state and props via this.state and this.props specifically as a React.Component
     const { hasError, error } = this.state;
     const { children } = this.props;
 
