@@ -15,13 +15,15 @@ interface State {
  * SystemGuardian component provides a safety layer to catch UI errors.
  * Enhanced with defensive logic to prevent DOM mutation crashes.
  */
-// Fix: Use React.Component to ensure proper inheritance and access to this.props and this.state
+// Fixed: Using explicit constructor and super(props) to ensure 'props' and 'state' are correctly recognized by TypeScript on the class instance.
 class SystemGuardian extends React.Component<Props, State> {
-  // Fix: Initialize state as a class property with explicit type
-  state: State = {
-    hasError: false,
-    error: null
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -32,7 +34,7 @@ class SystemGuardian extends React.Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Fix: Access state and props via this.state and this.props specifically as a React.Component
+    // Fixed: Accessing props and state via this.state and this.props to satisfy the compiler's inheritance checks.
     const { hasError, error } = this.state;
     const { children } = this.props;
 
