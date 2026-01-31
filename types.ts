@@ -77,7 +77,6 @@ export interface AuditLog {
   details: string;
 }
 
-// Rest of the existing interfaces preserved exactly...
 export enum PaymentMethodType {
   CREDIT_CARD = 'CREDIT_CARD',
   DEBIT_CARD = 'DEBIT_CARD',
@@ -220,6 +219,7 @@ export interface CleanerProfile {
   points: number;
   level: CleanerLevel;
   pointHistory: PointTransaction[];
+  notificationCount?: number;
 }
 
 export interface ClientProfile {
@@ -246,6 +246,7 @@ export interface Lead {
   status: 'OPEN' | 'ACCEPTED' | 'COMPLETED';
   acceptedByCleanerId?: string;
   createdAt: number;
+  broadcastToIds?: string[];
   context?: {
     viewedPortfolio?: boolean;
     portfolioCount?: number;

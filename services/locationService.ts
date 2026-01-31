@@ -5,11 +5,20 @@
  * Handles ZIP code matching and distance heuristics.
  */
 
+/**
+ * Normalizes any string to a standard 5-digit ZIP format.
+ * Trims whitespace, removes non-digits, and ensures padding.
+ */
+export const normalizeZip = (zip: string): string => {
+  const digits = zip.trim().replace(/\D/g, '');
+  return digits.padStart(5, '0').substring(0, 5);
+};
+
 // Heuristic: ZIP codes with same prefix are often within a certain radius.
 // Real production would use a coordinate database or Google Distance Matrix API.
 export const isZipInRange = (clientZip: string, cleanerBaseZip: string, radiusMiles: number): boolean => {
-  const cz = clientZip.trim().substring(0, 5);
-  const bz = cleanerBaseZip.trim().substring(0, 5);
+  const cz = normalizeZip(clientZip);
+  const bz = normalizeZip(cleanerBaseZip);
 
   if (cz === bz) return true;
 
@@ -38,10 +47,11 @@ export const canCleanerServeZip = (cleaner: {
   serviceRadius: number, 
   zipCodes: string[] 
 }, targetZip: string): boolean => {
-  const cz = targetZip.trim().substring(0, 5);
+  const cz = normalizeZip(targetZip);
   
-  // 1. Check manual list
-  if (cleaner.zipCodes.includes(cz)) return true;
+  // 1. Check manual list (Normalized)
+  const normalizedManualZips = (cleaner.zipCodes || []).map(normalizeZip);
+  if (normalizedManualZips.includes(cz)) return true;
 
   // 2. Check radius from base ZIP
   if (cleaner.baseZip) {
