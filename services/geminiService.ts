@@ -46,7 +46,8 @@ export const generateBrianResponse = async (
      }
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  // Fix: Initialize GoogleGenAI using a named parameter with process.env.API_KEY
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const response = await ai.models.generateContent({
@@ -62,6 +63,7 @@ export const generateBrianResponse = async (
     });
 
     CIRCUIT_BREAKER.failures = 0;
+    // Fix: Access .text property directly from the response object
     return response.text || "I'm sorry, I couldn't generate a response.";
   } catch (error) {
     CIRCUIT_BREAKER.failures++;
@@ -82,7 +84,8 @@ export const performIdentityVerification = async (
   assets: VerificationAssets,
   userProfile: { fullName: string; email: string }
 ): Promise<AiVerificationResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  // Fix: Initialize GoogleGenAI using a named parameter with process.env.API_KEY
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const cleanBase64 = (url: string) => {
@@ -91,8 +94,9 @@ export const performIdentityVerification = async (
         return parts.length > 1 ? parts[1] : parts[0];
     };
 
+    // Fix: Use 'gemini-3-pro-preview' for complex reasoning tasks like identity verification
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           { text: `IDENTITY VERIFICATION PROTOCOL - ENTERPRISE SECURITY LEVEL
@@ -155,6 +159,7 @@ export const performIdentityVerification = async (
       }
     });
 
+    // Fix: Access .text property directly from the response object
     const result = JSON.parse(response.text || "{}");
     return {
       ...result,

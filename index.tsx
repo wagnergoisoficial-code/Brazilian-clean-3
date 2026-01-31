@@ -20,10 +20,8 @@ const rootElement = document.getElementById('root');
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
-    <React.StrictMode>
-      <SystemGuardian>
-        <App />
-      </SystemGuardian>
-    </React.StrictMode>
+    <SystemGuardian>
+      <App />
+    </SystemGuardian>
   );
 }

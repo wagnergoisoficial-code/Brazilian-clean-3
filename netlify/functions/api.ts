@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 export const handler = async (event: any) => {
@@ -45,12 +46,11 @@ export const handler = async (event: any) => {
 
     const { contents, systemInstruction } = parsedBody;
 
-    const apiKey = process.env.API_KEY;
+    // Fix: Initialize GoogleGenAI using a named parameter with process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     // --- LIVE AI EXECUTION (PRODUCTION PATH) ---
-    if (apiKey) {
-      const ai = new GoogleGenAI({ apiKey });
-
+    if (process.env.API_KEY) {
       const aiCallPromise = ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: contents,
@@ -69,6 +69,7 @@ export const handler = async (event: any) => {
       const response: any = await Promise.race([aiCallPromise, timeoutPromise]);
       log("SUCCESS");
       
+      // Fix: Access .text property directly from the response object
       const text = response?.text || "I'm not sure how to answer that.";
 
       return {

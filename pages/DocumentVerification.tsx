@@ -162,6 +162,7 @@ const DocumentVerification: React.FC = () => {
       selfieWithDoc: ''
   });
   const [isVerifying, setIsVerifying] = useState(false);
+  const [redirectToDashboard, setRedirectToDashboard] = useState(false);
   const [verificationFeedback, setVerificationFeedback] = useState<AiVerificationResult | null>(null);
   
   const [editingField, setEditingField] = useState<keyof typeof assets | null>(null);
@@ -170,6 +171,13 @@ const DocumentVerification: React.FC = () => {
   useEffect(() => {
     if (!myProfile) { navigate('/join'); }
   }, [myProfile, navigate]);
+
+  useEffect(() => {
+    if (redirectToDashboard) {
+        const timer = setTimeout(() => navigate('/dashboard'), 200);
+        return () => clearTimeout(timer);
+    }
+  }, [redirectToDashboard, navigate]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>, field: keyof typeof assets) => {
     if (e.target.files && e.target.files[0]) {
@@ -221,12 +229,12 @@ const DocumentVerification: React.FC = () => {
             aiVerificationResult: aiResult
         });
 
-        setTimeout(() => navigate('/dashboard'), 800);
+        setRedirectToDashboard(true);
 
     } catch (err) {
         console.error("AI Guardian Exception:", err);
         updateCleanerProfile(cleanerId, { status: CleanerStatus.UNDER_REVIEW });
-        setTimeout(() => navigate('/dashboard'), 1000);
+        setRedirectToDashboard(true);
     }
   };
 
@@ -234,6 +242,7 @@ const DocumentVerification: React.FC = () => {
     <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans">
       {editingField && tempImage && (
         <ImageEditor 
+          key={`editor-${editingField}`}
           imageSrc={tempImage}
           title={editingField.includes('doc') ? 'Ajustar Documento' : 'Ajustar Rosto'}
           aspectRatio={editingField === 'facePhoto' ? 1 : 3/2}
@@ -246,7 +255,7 @@ const DocumentVerification: React.FC = () => {
         <div className="bg-slate-900 p-8 text-center text-white">
            <div className="flex justify-center gap-1 mb-6">
                {[1, 2, 3].map(s => (
-                   <div key={s} className={`h-1.5 w-12 rounded-full transition-all duration-500 ${step >= s ? 'bg-green-500' : 'bg-slate-700'}`}></div>
+                   <div key={`step-indicator-${s}`} className={`h-1.5 w-12 rounded-full transition-all duration-500 ${step >= s ? 'bg-green-500' : 'bg-slate-700'}`}></div>
                ))}
            </div>
            <h2 className="text-2xl font-black uppercase tracking-tighter">
@@ -259,7 +268,7 @@ const DocumentVerification: React.FC = () => {
 
         <div className="p-10">
             {verificationFeedback && (
-                <div className="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-3xl animate-fade-in">
+                <div key="feedback-area" className="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-3xl animate-fade-in">
                     <h3 className="text-red-700 font-black uppercase text-xs mb-2">Ops! Precisamos ajustar:</h3>
                     <p className="text-red-600 font-bold text-sm mb-1">{verificationFeedback.user_reason_pt}</p>
                     <p className="text-red-500 text-xs italic">{verificationFeedback.user_instruction_pt}</p>
@@ -267,7 +276,7 @@ const DocumentVerification: React.FC = () => {
             )}
 
             {step === 1 && (
-                <div className="space-y-8 animate-fade-in">
+                <div key="step1-container" className="space-y-8 animate-fade-in">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
                             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Frente</label>
@@ -293,7 +302,7 @@ const DocumentVerification: React.FC = () => {
             )}
 
             {step === 2 && (
-                <div className="space-y-8 animate-fade-in">
+                <div key="step2-container" className="space-y-8 animate-fade-in">
                     <div className="space-y-3">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center block">Foto de Rosto</label>
                         <div className="relative group max-w-xs mx-auto">
@@ -311,7 +320,7 @@ const DocumentVerification: React.FC = () => {
             )}
 
             {step === 3 && (
-                <div className="space-y-8 animate-fade-in text-center">
+                <div key="step3-container" className="space-y-8 animate-fade-in text-center">
                     <div className="space-y-3">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Selfie com Documento</label>
                         <div className="relative group max-w-sm mx-auto">

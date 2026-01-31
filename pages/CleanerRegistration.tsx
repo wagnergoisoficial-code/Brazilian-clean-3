@@ -17,26 +17,33 @@ const CleanerRegistration: React.FC = () => {
     fullName: '', email: '', password: '', phone: '', city: '', state: '', zipCode: ''
   });
 
-  // CRITICAL: Ensure authenticated users are moved out of this screen immediately and safely
   useEffect(() => {
     if (authenticatedCleanerId) {
       const cleaner = cleaners.find(c => c.id === authenticatedCleanerId);
-      if (cleaner) navigate('/dashboard');
+      if (cleaner) {
+          // If already logged in and profile is good, go to dashboard
+          if (cleaner.status === CleanerStatus.VERIFIED || cleaner.status === CleanerStatus.UNDER_REVIEW) {
+            navigate('/dashboard');
+          }
+      }
     }
   }, [authenticatedCleanerId, navigate, cleaners]);
 
-  // Handle redirects in useEffect to prevent DOM removeChild errors during render
   useEffect(() => {
     if (redirectTarget) {
       const { status, id } = redirectTarget;
-      switch(status) {
-          case CleanerStatus.EMAIL_PENDING: navigate(`/verify?id=${id}`); break;
-          case CleanerStatus.BUSINESS_PENDING: navigate(`/setup-business?id=${id}`); break;
-          case CleanerStatus.SERVICES_PENDING: navigate(`/setup-services?id=${id}`); break;
-          case CleanerStatus.AREA_PENDING: navigate(`/setup-area?id=${id}`); break;
-          case CleanerStatus.DOCUMENTS_PENDING: navigate(`/verify-documents?id=${id}`); break;
-          default: navigate('/dashboard');
-      }
+      // Delay navigation slightly to ensure state is settled
+      const timer = setTimeout(() => {
+          switch(status) {
+              case CleanerStatus.EMAIL_PENDING: navigate(`/verify?id=${id}`); break;
+              case CleanerStatus.BUSINESS_PENDING: navigate(`/setup-business?id=${id}`); break;
+              case CleanerStatus.SERVICES_PENDING: navigate(`/setup-services?id=${id}`); break;
+              case CleanerStatus.AREA_PENDING: navigate(`/setup-area?id=${id}`); break;
+              case CleanerStatus.DOCUMENTS_PENDING: navigate(`/verify-documents?id=${id}`); break;
+              default: navigate('/dashboard');
+          }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [redirectTarget, navigate]);
 
@@ -83,7 +90,7 @@ const CleanerRegistration: React.FC = () => {
                 baseZip: formData.zipCode,
                 zipCodes: [formData.zipCode]
             });
-            navigate(`/verify?id=${id}`);
+            setRedirectTarget({ status: CleanerStatus.EMAIL_PENDING, id });
         }
     } catch (err) {
         alert("Ocorreu um erro no sistema. Tente novamente.");
@@ -105,26 +112,25 @@ const CleanerRegistration: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          {/* Use stable keys on wrappers to prevent React from confusing DOM nodes during mode switch */}
           {!isLoginMode ? (
-            <div key="signup-fields" className="space-y-6 animate-fade-in">
+            <div key="signup-container" className="space-y-6 animate-fade-in">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                    <div key="field-name">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Nome Completo</label>
                         <input required type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Ex: Maria Silva" />
                     </div>
-                    <div>
+                    <div key="field-phone">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Telefone Celular</label>
                         <input required type="tel" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="(555) 000-0000" />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                    <div key="field-email-signup">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">E-mail Profissional</label>
                         <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" />
                     </div>
-                    <div>
+                    <div key="field-password-signup">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Crie uma Senha</label>
                         <div className="relative">
                             <input required type={showPassword ? "text" : "password"} minLength={6} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 pr-12 outline-none focus:border-blue-500 transition-colors" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
@@ -140,27 +146,27 @@ const CleanerRegistration: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    <div>
+                    <div key="field-city">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Cidade</label>
                         <input required type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} placeholder="Orlando" />
                     </div>
-                    <div>
+                    <div key="field-state">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Estado (UF)</label>
                         <input required type="text" maxLength={2} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center uppercase" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value.toUpperCase()})} placeholder="FL" />
                     </div>
-                    <div className="col-span-2 md:col-span-1">
+                    <div key="field-zip" className="col-span-2 md:col-span-1">
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">CEP Residencial</label>
-                        <input required type="text" maxLength={5} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value.replace(/\D/g,'')})} placeholder="32801" />
+                        <input required type="text" maxLength={5} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value.replace(/\D/g,'')})} placeholder="32801" />
                     </div>
                 </div>
             </div>
           ) : (
-            <div key="login-fields" className="space-y-6 animate-fade-in">
-              <div>
+            <div key="login-container" className="space-y-6 animate-fade-in">
+              <div key="field-email-login">
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">E-mail Cadastrado</label>
                 <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" />
               </div>
-              <div>
+              <div key="field-password-login">
                 <div className="flex justify-between items-center mb-2">
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Sua Senha</label>
                     <button type="button" onClick={handleForgotPassword} className="text-[9px] font-bold text-blue-500 uppercase hover:underline">Esqueci minha senha</button>
@@ -179,11 +185,11 @@ const CleanerRegistration: React.FC = () => {
             </div>
           )}
 
-          <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-blue-700 hover:shadow-2xl transition-all flex items-center justify-center disabled:opacity-50">
+          <button key="btn-submit" type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-blue-700 hover:shadow-2xl transition-all flex items-center justify-center disabled:opacity-50">
             {isSubmitting ? 'Aguarde...' : (isLoginMode ? 'Acessar Painel' : 'Finalizar cadastro e verificar e-mail')}
           </button>
 
-          <div className="pt-6 text-center border-t border-slate-100">
+          <div key="footer-switch" className="pt-6 text-center border-t border-slate-100">
              <p className="text-xs font-medium text-slate-400 mb-2">{isLoginMode ? 'Não possui uma conta?' : 'Já é cadastrado?'}</p>
              <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} className="text-sm font-black text-blue-600 uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
                 {isLoginMode ? 'Cadastrar agora' : 'Fazer Login'}

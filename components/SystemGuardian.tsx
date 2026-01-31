@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+
+import React, { ErrorInfo, ReactNode } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface Props {
@@ -14,19 +15,16 @@ interface State {
  * SystemGuardian component provides a safety layer to catch UI errors.
  * Enhanced with defensive logic to prevent DOM mutation crashes.
  */
-class SystemGuardian extends Component<Props, State> {
-  // Explicitly declare state and props to fix "Property does not exist on type" errors
-  public state: State;
-  public props: Props;
-  private containerRef = React.createRef<HTMLDivElement>();
+// Fix: Use React.Component explicitly to ensure proper property inheritance of state and props
+class SystemGuardian extends React.Component<Props, State> {
+  // Fix: Initialize state as a class property for better TypeScript compatibility and fix errors on line 20 and 35
+  override state: State = {
+    hasError: false,
+    error: null
+  };
 
   constructor(props: Props) {
     super(props);
-    // Initialize state within the constructor
-    this.state = {
-      hasError: false,
-      error: null
-    };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -35,23 +33,16 @@ class SystemGuardian extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("CRITICAL UI CRASH:", error, errorInfo);
-    // Silent reporting would go here
-  }
-
-  // Defensive measure: Ensure cleanup of any stray DOM elements if necessary
-  componentWillUnmount() {
-    // Audit for stray child nodes if needed. 
-    // Usually React handles this, but defensive checks help in complex overlays.
   }
 
   render(): ReactNode {
-    // Correctly access state and props via 'this' to satisfy the class component context
+    // Fix: Access state and props via this.state and this.props to resolve errors on lines 35 and 36
     const { hasError, error } = this.state;
     const { children } = this.props;
 
     if (hasError) {
       return (
-        <div ref={this.containerRef} className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-sans overflow-hidden">
+        <div key="system-error-overlay" className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-sans overflow-hidden">
           <div className="max-w-xl w-full bg-slate-800 rounded-2xl shadow-2xl border border-red-500/30 p-8 text-center animate-scale-in">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500">
                <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -84,8 +75,7 @@ class SystemGuardian extends Component<Props, State> {
       );
     }
 
-    // Defensive check: if children is null/undefined, don't crash
-    return children || null;
+    return children ? <div key="app-wrapper">{children}</div> : null;
   }
 }
 
