@@ -5,6 +5,7 @@ import {
   SupportRequest, SupportStatus, SupportType, TeamMember, AuditLog, EmailNotification
 } from '../types';
 import { translateChatMessage } from '../services/geminiService';
+import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface AppContextType {
   cleaners: CleanerProfile[];
@@ -106,6 +107,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs, isHydrated]);
 
+  /**
+   * PRODUCTION DISPATCHER
+   * Calls the Netlify function to send real emails.
+   */
+  const dispatchEmail = async (to: string, language: 'en' | 'pt'): Promise<string | null> => {
+    try {
+      const response = await fetch('/.netlify/functions/sendVerificationEmail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, language })
+      });
+      
+      const data = await response.json();
+      if (data.success && data.code) {
+        return data.code;
+      }
+      return null;
+    } catch (err) {
+      console.error("Critical Mail Dispatch Error:", err);
+      return null;
+    }
+  };
+
   const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
     const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
     if (cleaner) {
@@ -119,7 +143,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Attempt real email dispatch first in production
+    let code = await dispatchEmail(data.email || '', 'pt');
+    
+    // Fallback if API fails or in dev
+    if (!code) {
+      code = Math.floor(100000 + Math.random() * 900000).toString();
+    }
     
     const newCleaner: CleanerProfile = {
       id,
@@ -188,7 +219,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Dispatch real email to American client
+    let code = await dispatchEmail(l.clientEmail || '', 'en');
+    
+    // Fallback for non-production or if dispatch fails
+    if (!code) {
+        code = Math.floor(100000 + Math.random() * 900000).toString();
+    }
     
     const newLead: Lead = { ...l, id, status: 'OPEN', createdAt: Date.now() } as Lead;
     setLeads(prev => [newLead, ...prev]);
@@ -285,10 +323,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const resendCleanerCode = async (id: string) => {
     const cleaner = cleaners.find(c => c.id === id);
     if (cleaner) {
+      const code = await dispatchEmail(cleaner.email, 'pt');
+      if (code) {
+          updateCleanerProfile(id, { verificationCode: code });
+      }
       setLastEmail({
         to: cleaner.email,
         subject: "Seu novo código",
-        body: `Seu novo código é: ${cleaner.verificationCode}`,
+        body: `Seu novo código é: ${code || cleaner.verificationCode}`,
         actionLink: `/verify?id=${id}`,
         actionText: "Verificar"
       });
@@ -296,11 +338,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const resendClientCode = async () => {
-    if (pendingClientEmail && pendingClientCode) {
+    if (pendingClientEmail) {
+      const code = await dispatchEmail(pendingClientEmail, 'en');
+      if (code) {
+          setPendingClientCode(code);
+      }
       setLastEmail({
         to: pendingClientEmail,
         subject: "New verification code",
-        body: `Your new code is: ${pendingClientCode}`,
+        body: `Your new code is: ${code || pendingClientCode}`,
         actionLink: `/verify?type=client`,
         actionText: "Verify"
       });

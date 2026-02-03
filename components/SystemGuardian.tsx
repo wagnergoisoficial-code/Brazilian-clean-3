@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface Props {
@@ -11,14 +11,19 @@ interface State {
   error: Error | null;
 }
 
-// Fixed: Added explicit constructor and ensured generic types are correctly applied to React.Component
-class SystemGuardian extends Component<Props, State> {
+/**
+ * SystemGuardian component that acts as a top-level error boundary.
+ * Fixed: Explicitly extends React.Component and ensures state/props are correctly recognized by the TypeScript compiler.
+ */
+class SystemGuardian extends React.Component<Props, State> {
+  // Explicitly define the state property to ensure the compiler recognizes it as part of the class.
+  state: State = {
+    hasError: false,
+    error: null
+  };
+
   constructor(props: Props) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -30,7 +35,7 @@ class SystemGuardian extends Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Fixed: Explicitly using 'this' to access state and props in class component
+    // Fixed: Explicitly accessing state and props from 'this' to avoid property not found errors.
     const { hasError, error } = this.state;
     const { children } = this.props;
 
