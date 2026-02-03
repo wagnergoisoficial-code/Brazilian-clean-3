@@ -34,152 +34,53 @@ export enum SupportType {
   CLEANER = 'CLEANER'
 }
 
-export interface AdminPermissions {
-  canApproveDocuments: boolean;
-  canRejectDocuments: boolean;
-  canViewPII: boolean;
-  canResetPassword: boolean;
-  canResendVerificationCode: boolean;
-  canViewLeads: boolean;
-  canManageTeam: boolean;
-  canViewAuditLogs: boolean;
-}
-
-export interface TeamMember {
-  id: string;
-  fullName: string;
-  email: string;
-  role: AdminRole;
-  status: 'ACTIVE' | 'SUSPENDED';
-  lastLogin?: string;
-  permissions: AdminPermissions;
-}
-
-export interface TeamInvite {
-  id: string;
-  email: string;
-  fullName: string;
-  role: AdminRole;
-  token: string;
-  expiresAt: number;
-  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED';
-  permissions: AdminPermissions;
-}
-
-export interface AuditLog {
-  id: string;
-  adminId: string;
-  adminName: string;
-  action: string;
-  targetId?: string;
-  targetType?: 'CLEANER' | 'CLIENT' | 'TEAM_MEMBER';
-  timestamp: string;
-  details: string;
-}
-
-export enum PaymentMethodType {
-  CREDIT_CARD = 'CREDIT_CARD',
-  DEBIT_CARD = 'DEBIT_CARD',
-  STRIPE = 'STRIPE',
-  PAYPAL = 'PAYPAL',
-  ADMIN_EXEMPTION = 'ADMIN_EXEMPTION'
-}
-
-export enum SubscriptionPlan {
-  PROMO_STARTUP = 'PROMO_STARTUP',
-  STANDARD_PRO = 'STANDARD_PRO'
-}
-
-export enum DiscountType {
-  PERCENTAGE = 'PERCENTAGE',
-  FIXED_AMOUNT = 'FIXED_AMOUNT',
-  FULL_EXEMPTION = 'FULL_EXEMPTION'
-}
-
-export enum CleanerLevel {
-  BRONZE = 'BRONZE',
-  SILVER = 'SILVER',
-  GOLD = 'GOLD'
-}
-
-export interface PointTransaction {
-  id: string;
-  amount: number;
-  reason: string;
-  date: string;
-  campaignId?: string;
-  adminId?: string;
-}
-
-export interface BonusCampaign {
-  id: string;
-  title: string;
-  description: string;
-  pointsReward: number;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  type: 'MANUAL' | 'LEAD_ACCEPT' | 'JOB_COMPLETE' | 'REVIEW_5_STAR';
-}
-
-export interface Discount {
-  id: string;
-  type: DiscountType;
-  value: number;
-  description: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-}
-
-export interface Subscription {
-  isActive: boolean;
-  plan: SubscriptionPlan;
-  startDate: string;
-  nextBillingDate: string;
-  paymentMethod: PaymentMethodType;
-  lastPaymentAmount: number;
-  activeDiscount?: Discount;
-  billingHistory: {
-    date: string;
-    amount: number;
-    status: 'PAID' | 'FAILED' | 'EXEMPTED';
-  }[];
-}
-
-export interface SupportRequest {
-  id: string;
-  type: SupportType;
-  fullName: string;
-  contactEmail?: string;
-  contactPhone: string;
-  whatsapp?: string;
-  message: string;
-  status: SupportStatus;
-  createdAt: string;
-  resolvedAt?: string;
-}
-
+// --- AI & VERIFICATION ---
 export interface AiVerificationResult {
   verification_status: "LIKELY_VALID" | "NEEDS_MANUAL_REVIEW" | "LIKELY_FRAUD";
   confidence_score: number;
-  detected_issues: string[];
-  summary: string;
-  recommended_action: "Approve" | "Review" | "Reject";
-  timestamp: string;
+  summary?: string;
   user_reason_pt?: string;
   user_instruction_pt?: string;
 }
 
-export interface PortfolioItem {
+// --- CHAT SYSTEM INTERFACES ---
+export interface ChatRoom {
   id: string;
+  leadId: string;
+  clientId: string;
+  cleanerId: string;
+  createdAt: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatRoomId: string;
+  senderRole: 'client' | 'cleaner';
+  messageOriginal: string;
+  languageOriginal: 'en' | 'pt';
+  messageTranslated: string;
+  languageTarget: 'en' | 'pt';
+  createdAt: number;
+}
+
+export interface Lead {
+  id: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail?: string;
+  zipCode: string;
   serviceType: string;
-  beforeImage: string;
-  afterImage: string;
-  description?: string;
-  createdAt: string;
-  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
-  adminNote?: string;
+  bedrooms: number;
+  bathrooms: number;
+  date: string;
+  status: 'OPEN' | 'ACCEPTED' | 'COMPLETED';
+  acceptedByCleanerId?: string;
+  createdAt: number;
+  broadcastToIds?: string[];
+  context?: {
+    viewedPortfolio?: boolean;
+    portfolioCount?: number;
+  };
 }
 
 export interface CleanerProfile {
@@ -222,6 +123,23 @@ export interface CleanerProfile {
   notificationCount?: number;
 }
 
+export enum CleanerLevel {
+  BRONZE = 'BRONZE',
+  SILVER = 'SILVER',
+  GOLD = 'GOLD'
+}
+
+export interface PortfolioItem {
+  id: string;
+  serviceType: string;
+  beforeImage: string;
+  afterImage: string;
+  description?: string;
+  createdAt: string;
+  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  adminNote?: string;
+}
+
 export interface ClientProfile {
   id: string;
   fullName: string;
@@ -233,46 +151,110 @@ export interface ClientProfile {
   joinedDate: string;
 }
 
-export interface Lead {
-  id: string;
-  clientName: string;
-  clientPhone: string;
-  clientEmail?: string;
-  zipCode: string;
-  serviceType: string;
-  bedrooms: number;
-  bathrooms: number;
-  date: string;
-  status: 'OPEN' | 'ACCEPTED' | 'COMPLETED';
-  acceptedByCleanerId?: string;
-  createdAt: number;
-  broadcastToIds?: string[];
-  context?: {
-    viewedPortfolio?: boolean;
-    portfolioCount?: number;
-  };
-}
-
-export interface FeedPost {
-  id: string;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  date: string;
-  type: 'EVENT' | 'ANNOUNCEMENT' | 'TRAINING';
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  timestamp: number;
-}
-
 export interface EmailNotification {
   to: string;
   subject: string;
   body: string;
   actionLink: string;
   actionText: string;
+}
+
+export interface AuditLog {
+  id: string;
+  adminId: string;
+  adminName: string;
+  action: string;
+  targetId?: string;
+  targetType?: 'CLEANER' | 'CLIENT' | 'TEAM_MEMBER';
+  timestamp: string;
+  details: string;
+}
+
+export interface BonusCampaign {
+  id: string;
+  title: string;
+  description: string;
+  pointsReward: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  type: 'MANUAL' | 'LEAD_ACCEPT' | 'JOB_COMPLETE' | 'REVIEW_5_STAR';
+}
+
+export interface SupportRequest {
+  id: string;
+  type: SupportType;
+  fullName: string;
+  contactEmail?: string;
+  contactPhone: string;
+  whatsapp?: string;
+  message: string;
+  status: SupportStatus;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface TeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AdminRole;
+  status: 'ACTIVE' | 'SUSPENDED';
+  lastLogin?: string;
+  permissions: any;
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  fullName: string;
+  role: AdminRole;
+  token: string;
+  expiresAt: number;
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED';
+  permissions: any;
+}
+
+// --- SUBSCRIPTION & PAYMENT ---
+export enum PaymentMethodType {
+  CREDIT_CARD = 'CREDIT_CARD',
+  PIX = 'PIX',
+  STRIPE = 'STRIPE'
+}
+
+export enum SubscriptionPlan {
+  PROMO_STARTUP = 'PROMO_STARTUP',
+  STANDARD_PRO = 'STANDARD_PRO'
+}
+
+export enum DiscountType {
+  FULL_EXEMPTION = 'FULL_EXEMPTION',
+  FIXED_AMOUNT = 'FIXED_AMOUNT',
+  PERCENTAGE = 'PERCENTAGE'
+}
+
+export interface Discount {
+  type: DiscountType;
+  value: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface Subscription {
+  isActive: boolean;
+  plan: SubscriptionPlan;
+  startDate: string;
+  nextBillingDate: string;
+  paymentMethod: PaymentMethodType;
+  lastPaymentAmount: number;
+  activeDiscount?: Discount;
+  billingHistory: any[];
+}
+
+export interface PointTransaction {
+  id: string;
+  amount: number;
+  reason: string;
+  date: string;
+  campaignId?: string;
 }

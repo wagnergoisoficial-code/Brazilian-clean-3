@@ -1,31 +1,73 @@
-/* Brazilian Clean - Global Styles (Vanilla CSS) */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
   --primary-teal: #f0fdfa;
   --guardian-slate: #0f172a;
+  
+  /* US Flag Colors */
+  --us-blue: #002868;
+  --us-red: #BF0A30;
+  
+  /* BR Flag Colors */
+  --br-green: #009739;
+  --br-yellow: #FEDD00;
+  --br-blue: #012169;
 }
 
 body {
   background-color: var(--primary-teal);
   color: var(--guardian-slate);
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Custom Gradients */
+.bg-us-br-bridge {
+  background: linear-gradient(90deg, var(--br-green) 0%, var(--br-yellow) 40%, var(--us-red) 60%, var(--us-blue) 100%);
+}
+
+.border-us-br-bridge {
+  border-image: linear-gradient(90deg, var(--br-green), var(--br-yellow), var(--us-red), var(--us-blue)) 1;
+}
+
+/* Esconder barra de rolagem em containers específicos */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slide-in-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-slide-in-up {
-  animation: slide-in-up 0.5s ease-out forwards;
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in { animation: fade-in-up 0.6s ease-out forwards; }
+.animate-fade-in-up { opacity: 0; animation: fade-in-up 0.6s ease-out forwards; }
+.animate-fade-in-down { animation: fade-in-down 0.6s ease-out forwards; }
+.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
 }

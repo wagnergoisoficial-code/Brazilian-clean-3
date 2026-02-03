@@ -1,14 +1,23 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { generateBrianResponse } from '../services/geminiService';
-import { ChatMessage } from '../types';
+import { UserRole } from '../types';
+
+// Defining a local interface to avoid conflict with the marketplace ChatMessage type
+interface BrianMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+}
 
 const BrianAI: React.FC = () => {
   const { isChatOpen, setIsChatOpen, userRole, cleaners } = useAppContext();
   const location = useLocation();
   const [input, setInput] = useState('');
-  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const [history, setHistory] = useState<BrianMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
   const EXTERNAL_AVATAR = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200";
@@ -18,16 +27,18 @@ const BrianAI: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Standardized, compliant greeting (Bilingual)
     if (history.length === 0) {
+      const isCleaner = userRole === UserRole.CLEANER;
       setHistory([{
         id: '1',
         role: 'model',
-        text: 'Hello! I am Luna. I am here to help you with Brazilian Clean 😊 | Olá! Sou a Luna. Estou aqui para te ajudar no Brazilian Clean 😊',
+        text: isCleaner 
+          ? 'Olá! Sou a Luna. Estou aqui para te ajudar no seu painel profissional 😊' 
+          : 'Hello! I am Luna. I am here to help you find the best professional for your home 😊',
         timestamp: Date.now()
       }]);
     }
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,7 +48,7 @@ const BrianAI: React.FC = () => {
     e?.preventDefault();
     if (!input.trim()) return;
 
-    const userMsg: ChatMessage = {
+    const userMsg: BrianMessage = {
       id: Date.now().toString(),
       role: 'user',
       text: input,
@@ -48,15 +59,16 @@ const BrianAI: React.FC = () => {
     setInput('');
     setIsTyping(true);
 
-    // SAFETY VALVE: UI Timeout
-    // Guarantees UI doesn't freeze, but uses a natural message instead of "Error"
     const safetyValve = setTimeout(() => {
         setIsTyping((current) => {
             if (current) {
+                const isCleaner = userRole === UserRole.CLEANER;
                 setHistory(prev => [...prev, {
                     id: Date.now().toString(),
                     role: 'model',
-                    text: "Hmm, demorou um pouquinho... Tente perguntar novamente? 😊 | Hmm, taking a moment... could you ask again? 😊",
+                    text: isCleaner 
+                      ? "Hmm, demorou um pouquinho... Tente perguntar novamente? 😊" 
+                      : "Hmm, taking a moment... could you ask again? 😊",
                     timestamp: Date.now()
                 }]);
                 return false;
@@ -69,12 +81,12 @@ const BrianAI: React.FC = () => {
       const apiHistory = history.map(h => ({ role: h.role, text: h.text }));
       apiHistory.push({ role: userMsg.role, text: userMsg.text });
 
-      // Service guarantees a string return and never throws (internally caught)
-      const responseText = await generateBrianResponse(apiHistory, userRole, location.pathname, cleaners);
+      // Fixed: generateBrianResponse only takes 3 arguments
+      const responseText = await generateBrianResponse(apiHistory, userRole, location.pathname);
       
-      clearTimeout(safetyValve); // Success, clear the valve
+      clearTimeout(safetyValve);
 
-      const botMsg: ChatMessage = {
+      const botMsg: BrianMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
         text: responseText,
@@ -82,19 +94,20 @@ const BrianAI: React.FC = () => {
       };
       setHistory(prev => [...prev, botMsg]);
     } catch (error) {
-      // Emergency UI Fallback (Should rarely be reached due to service layer catch)
       clearTimeout(safetyValve);
-      console.error("UI Chat Error:", error);
-      const botMsg: ChatMessage = {
+      const isCleaner = userRole === UserRole.CLEANER;
+      const botMsg: BrianMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: "Desculpe, tive um pequeno lapso. Como posso te ajudar com a plataforma? 😊",
+        text: isCleaner 
+          ? "Desculpe, tive um pequeno lapso. Como posso te ajudar com a plataforma? 😊" 
+          : "Sorry, I had a small lapse. How can I help you with the platform? 😊",
         timestamp: Date.now()
       };
       setHistory(prev => [...prev, botMsg]);
     } finally {
       setIsTyping(false);
-      clearTimeout(safetyValve); // Ensure timer is cleared in all paths
+      clearTimeout(safetyValve);
     }
   };
 
@@ -166,7 +179,7 @@ const BrianAI: React.FC = () => {
           type="text" 
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask Luna... | Fale com a Luna..."
+          placeholder={userRole === UserRole.CLEANER ? "Fale com a Luna..." : "Ask Luna..."}
           className="flex-1 bg-gray-100 text-sm px-4 py-2 rounded-full focus:outline-none focus:ring-1 focus:ring-slate-400 transition"
         />
         <button 

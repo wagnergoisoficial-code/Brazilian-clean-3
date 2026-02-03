@@ -7,26 +7,69 @@ import { SYSTEM_IDENTITY, RECOVERY_PROTOCOL } from "../config/SystemManifest";
  * 1. Automated Backups
  * 2. Data Integrity Checks
  * 3. Disaster Recovery
+ * 4. Resource & Credit Metrics (New)
  */
 
 const STORAGE_KEYS = ['bc_cleaners', 'bc_clients', 'bc_leads', 'bc_posts', 'bc_support'];
-const BACKUP_PREFIX = 'bc_backup_';
 
-interface SystemHealth {
+export interface SystemMetrics {
+  aiCredits: {
+    used: number;
+    total: number;
+    percentage: number;
+  };
+  apiRequests: {
+    count: number;
+    limit: number;
+    percentage: number;
+  };
+  storage: {
+    usage: string;
+    integrity: boolean;
+  };
+}
+
+export interface SystemHealth {
   status: 'HEALTHY' | 'DEGRADED' | 'CRITICAL';
   lastBackup: string | null;
   version: string;
   dataIntegrity: boolean;
   issues: string[];
+  metrics: SystemMetrics;
 }
 
-// 1. AUTOMATED BACKUP
+// 1. RESOURCE METRICS (Simulated for Admin Dashboard)
+export const getSystemMetrics = (): SystemMetrics => {
+  // In a real environment, this would fetch from a billing or monitoring API
+  // Using deterministic simulation based on current date for UI consistency
+  const dayOfMonth = new Date().getDate();
+  const usedCredits = (dayOfMonth * 142) % 1000;
+  const reqCount = (dayOfMonth * 890) % 5000;
+
+  return {
+    aiCredits: {
+      used: usedCredits,
+      total: 1000,
+      percentage: (usedCredits / 1000) * 100
+    },
+    apiRequests: {
+      count: reqCount,
+      limit: 5000,
+      percentage: (reqCount / 5000) * 100
+    },
+    storage: {
+      usage: "1.2MB",
+      integrity: true
+    }
+  };
+};
+
+// 2. AUTOMATED BACKUP
 export const performAutoBackup = (): boolean => {
   try {
     const timestamp = new Date().toISOString();
     const backupData: Record<string, any> = {};
 
-    // Collect all critical data
     STORAGE_KEYS.forEach(key => {
       const data = localStorage.getItem(key);
       if (data) {
@@ -40,8 +83,6 @@ export const performAutoBackup = (): boolean => {
       type: 'AUTO'
     };
 
-    // Save to backup slot (Rotational strategy: keep last 3)
-    // For simplicity in this env, we keep one Master Backup
     localStorage.setItem(RECOVERY_PROTOCOL.DATA_PERSISTENCE_KEY, JSON.stringify(backupData));
     console.log(`[System Guardian] Backup secured at ${timestamp}`);
     return true;
@@ -52,12 +93,11 @@ export const performAutoBackup = (): boolean => {
   }
 };
 
-// 2. INTEGRITY CHECK
+// 3. INTEGRITY CHECK
 export const checkSystemHealth = (): SystemHealth => {
   const issues: string[] = [];
   let isHealthy = true;
 
-  // Check if critical data is parseable
   STORAGE_KEYS.forEach(key => {
     const data = localStorage.getItem(key);
     if (data) {
@@ -70,7 +110,6 @@ export const checkSystemHealth = (): SystemHealth => {
     }
   });
 
-  // Check Backup Existence
   const backup = localStorage.getItem(RECOVERY_PROTOCOL.DATA_PERSISTENCE_KEY);
   if (!backup) {
     issues.push("No Restore Point found.");
@@ -81,11 +120,12 @@ export const checkSystemHealth = (): SystemHealth => {
     lastBackup: backup ? JSON.parse(backup)._meta.timestamp : null,
     version: SYSTEM_IDENTITY.VERSION,
     dataIntegrity: isHealthy,
-    issues
+    issues,
+    metrics: getSystemMetrics()
   };
 };
 
-// 3. DISASTER RECOVERY (RESTORE)
+// 4. DISASTER RECOVERY (RESTORE)
 export const restoreFromBackup = (): boolean => {
   try {
     const backupRaw = localStorage.getItem(RECOVERY_PROTOCOL.DATA_PERSISTENCE_KEY);
@@ -93,7 +133,6 @@ export const restoreFromBackup = (): boolean => {
 
     const backup = JSON.parse(backupRaw);
 
-    // Restore keys
     STORAGE_KEYS.forEach(key => {
       if (backup[key]) {
         localStorage.setItem(key, JSON.stringify(backup[key]));
@@ -108,9 +147,7 @@ export const restoreFromBackup = (): boolean => {
   }
 };
 
-// 4. FACTORY RESET (NUCLEAR OPTION)
 export const factoryReset = () => {
-  console.warn("[System Guardian] Initiating Factory Reset...");
   localStorage.clear();
   window.location.reload();
 };

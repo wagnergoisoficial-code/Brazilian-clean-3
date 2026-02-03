@@ -17,22 +17,12 @@ const CleanerRegistration: React.FC = () => {
     fullName: '', email: '', password: '', phone: '', city: '', state: '', zipCode: ''
   });
 
-  useEffect(() => {
-    if (authenticatedCleanerId) {
-      const cleaner = cleaners.find(c => c.id === authenticatedCleanerId);
-      if (cleaner) {
-          // If already logged in and profile is good, go to dashboard
-          if (cleaner.status === CleanerStatus.VERIFIED || cleaner.status === CleanerStatus.UNDER_REVIEW) {
-            navigate('/dashboard');
-          }
-      }
-    }
-  }, [authenticatedCleanerId, navigate, cleaners]);
+  // NORMALIZATION: Professionals are no longer forced to dashboard on mount.
+  // This allows the /professional page to act as a proper institutional/auth hub.
 
   useEffect(() => {
     if (redirectTarget) {
       const { status, id } = redirectTarget;
-      // Delay navigation slightly to ensure state is settled
       const timer = setTimeout(() => {
           switch(status) {
               case CleanerStatus.EMAIL_PENDING: navigate(`/verify?id=${id}`); break;
@@ -54,7 +44,7 @@ const CleanerRegistration: React.FC = () => {
       }
       try {
           await requestPasswordReset(formData.email);
-          alert("Um link de recuperação foi enviado para seu e-mail (Verifique o simulador).");
+          alert("Um link de recuperação foi enviado para seu e-mail.");
       } catch (err: any) {
           alert(err.message);
       }
@@ -99,103 +89,126 @@ const CleanerRegistration: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans">
-      <div className={`w-full bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ${isLoginMode ? 'max-w-md' : 'max-w-2xl'}`}>
-        <div className="bg-slate-900 py-10 px-8 text-center text-white relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-           <h2 className="text-3xl font-black uppercase tracking-tighter relative z-10">
-              {isLoginMode ? 'Entrar no Sistema' : 'Cadastro Profissional'}
-           </h2>
-           <p className="text-slate-400 mt-2 relative z-10">
-              {isLoginMode ? 'Acesse seu painel profissional' : 'Crie sua conta e comece a faturar'}
-           </p>
+    <div className="min-h-screen bg-teal-50 py-12 lg:py-24 px-4 flex items-center justify-center font-sans overflow-x-hidden">
+      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+        
+        {/* LEFT COLUMN: BRAZILIAN PRIDE */}
+        <div className="hidden lg:block animate-fade-in">
+           <div className="relative">
+              <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-[#009739] rounded-full blur-[100px] opacity-20"></div>
+              
+              <div className="relative z-10 w-full aspect-[4/5] bg-white rounded-[3.5rem] overflow-hidden shadow-2xl border-[16px] border-white">
+                  <img 
+                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=1200" 
+                    alt="Brazilian Professional" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#009739]/90 to-transparent p-12">
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl">🇧🇷</span>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Oportunidade Real</h3>
+                      </div>
+                      <p className="text-white/80 font-medium">Cadastre-se hoje e conecte-se com clientes americanos de alto padrão.</p>
+                  </div>
+              </div>
+           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          {!isLoginMode ? (
-            <div key="signup-container" className="space-y-6 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div key="field-name">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Nome Completo</label>
-                        <input required type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Ex: Maria Silva" />
-                    </div>
-                    <div key="field-phone">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Telefone Celular</label>
-                        <input required type="tel" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="(555) 000-0000" />
-                    </div>
-                </div>
+        {/* RIGHT COLUMN: FORM */}
+        <div className={`w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 transition-all duration-500 animate-fade-in ${isLoginMode ? 'max-w-md mx-auto lg:max-w-none' : 'max-w-2xl mx-auto lg:max-w-none'}`}>
+          <div className="bg-[#009739] py-12 px-10 text-center text-white relative">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-[#FEDD00]/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+             <h2 className="text-4xl font-black uppercase tracking-tighter relative z-10 leading-none">
+                {isLoginMode ? 'Acesso Profissional' : 'Seja uma Professional'}
+             </h2>
+             <p className="text-[#FEDD00] mt-3 font-bold uppercase text-[10px] tracking-[0.2em] relative z-10">
+                {isLoginMode ? 'Gerencie seus ganhos em Dólar' : 'Transforme seu trabalho em um negócio lucrativo'}
+             </p>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div key="field-email-signup">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">E-mail Profissional</label>
-                        <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" />
+          {authenticatedCleanerId ? (
+              <div className="p-10 text-center space-y-6">
+                  <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-100">
+                      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">Bem-vinda de volta!</h3>
+                  <p className="text-slate-500">Você já está autenticada no sistema.</p>
+                  <button onClick={() => navigate('/dashboard')} className="w-full bg-[#009739] hover:bg-black text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition transform active:scale-95">Ir para meu Painel</button>
+              </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="p-10 space-y-6">
+                {!isLoginMode ? (
+                <div key="signup-container" className="space-y-6 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Nome Completo</label>
+                            <input required type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Maria Silva" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">WhatsApp / Telefone</label>
+                            <input required type="tel" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="(000) 000-0000" />
+                        </div>
                     </div>
-                    <div key="field-password-signup">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Crie uma Senha</label>
-                        <div className="relative">
-                            <input required type={showPassword ? "text" : "password"} minLength={6} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 pr-12 outline-none focus:border-blue-500 transition-colors" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                {showPassword ? (
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.643-9.943-6.442a5.049 5.049 0 011.102-1.241m3.072-3.238A10.05 10.05 0 0112 5c4.478 0 8.268 2.643 9.943 6.442a5.049 5.049 0 01-1.102 1.241m-4.321 4.321L3 3l18 18" /></svg>
-                                ) : (
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                )}
-                            </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">E-mail</label>
+                            <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="seu@email.com" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Senha</label>
+                            <input required type={showPassword ? "text" : "password"} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Cidade</label>
+                            <input required type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} placeholder="Orlando" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">UF (USA)</label>
+                            <input required type="text" maxLength={2} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors text-center uppercase font-bold" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value.toUpperCase()})} placeholder="FL" />
+                        </div>
+                        <div className="col-span-2 md:col-span-1 space-y-2">
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">ZIP Code</label>
+                            <input required type="text" maxLength={5} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-[#009739] transition-colors text-center font-bold" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value.replace(/\D/g,'')})} placeholder="32801" />
                         </div>
                     </div>
                 </div>
+                ) : (
+                <div key="login-container" className="space-y-6 animate-fade-in">
+                    <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">E-mail Cadastrado</label>
+                    <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-5 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="seu@email.com" />
+                    </div>
+                    <div className="space-y-2">
+                    <div className="flex justify-between items-center mb-1">
+                        <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Senha</label>
+                        <button type="button" onClick={handleForgotPassword} className="text-[9px] font-black text-[#009739] uppercase hover:underline">Esqueci a senha</button>
+                    </div>
+                    <input required type={showPassword ? "text" : "password"} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-5 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
+                    </div>
+                </div>
+                )}
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    <div key="field-city">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Cidade</label>
-                        <input required type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} placeholder="Orlando" />
-                    </div>
-                    <div key="field-state">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Estado (UF)</label>
-                        <input required type="text" maxLength={2} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center uppercase" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value.toUpperCase()})} placeholder="FL" />
-                    </div>
-                    <div key="field-zip" className="col-span-2 md:col-span-1">
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">CEP Residencial</label>
-                        <input required type="text" maxLength={5} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors text-center" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value.replace(/\D/g,'')})} placeholder="32801" />
-                    </div>
+                <button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="w-full bg-[#009739] hover:bg-black text-white py-6 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl flex items-center justify-center transition-all transform active:scale-95"
+                >
+                {isSubmitting ? 'Verificando...' : (isLoginMode ? 'Acessar Painel Profissional' : 'Iniciar Cadastro de Profissional')}
+                </button>
+
+                <div className="pt-8 text-center border-t border-slate-50">
+                <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">{isLoginMode ? 'Ainda não é cadastrada?' : 'Já possui conta?'}</p>
+                <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} className="text-sm font-black text-[#009739] uppercase tracking-[0.2em] hover:text-[#012169] transition">
+                    {isLoginMode ? 'Criar minha conta profissional' : 'Fazer Login Profissional'}
+                </button>
                 </div>
-            </div>
-          ) : (
-            <div key="login-container" className="space-y-6 animate-fade-in">
-              <div key="field-email-login">
-                <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">E-mail Cadastrado</label>
-                <input required type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 outline-none focus:border-blue-500 transition-colors" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" />
-              </div>
-              <div key="field-password-login">
-                <div className="flex justify-between items-center mb-2">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Sua Senha</label>
-                    <button type="button" onClick={handleForgotPassword} className="text-[9px] font-bold text-blue-500 uppercase hover:underline">Esqueci minha senha</button>
-                </div>
-                <div className="relative">
-                    <input required type={showPassword ? "text" : "password"} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 pr-12 outline-none focus:border-blue-500 transition-colors" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        {showPassword ? (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.643-9.943-6.442a5.049 5.049 0 011.102-1.241m3.072-3.238A10.05 10.05 0 0112 5c4.478 0 8.268 2.643 9.943 6.442a5.049 5.049 0 01-1.102 1.241m-4.321 4.321L3 3l18 18" /></svg>
-                        ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        )}
-                    </button>
-                </div>
-              </div>
-            </div>
+            </form>
           )}
-
-          <button key="btn-submit" type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-blue-700 hover:shadow-2xl transition-all flex items-center justify-center disabled:opacity-50">
-            {isSubmitting ? 'Aguarde...' : (isLoginMode ? 'Acessar Painel' : 'Finalizar cadastro e verificar e-mail')}
-          </button>
-
-          <div key="footer-switch" className="pt-6 text-center border-t border-slate-100">
-             <p className="text-xs font-medium text-slate-400 mb-2">{isLoginMode ? 'Não possui uma conta?' : 'Já é cadastrado?'}</p>
-             <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} className="text-sm font-black text-blue-600 uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
-                {isLoginMode ? 'Cadastrar agora' : 'Fazer Login'}
-             </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );

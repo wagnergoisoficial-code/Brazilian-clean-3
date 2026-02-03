@@ -15,7 +15,6 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
   </div>
 );
 
-// Canonical Service Map for Search UI (Unified Keys)
 const SERVICE_UI_MAP_EN: Record<string, string> = {
   'residential_cleaning': 'Standard Clean',
   'recurring_cleaning_weekly': 'Weekly Clean',
@@ -43,8 +42,8 @@ const SERVICE_UI_MAP_EN: Record<string, string> = {
 const LevelBadge: React.FC<{ level: CleanerLevel }> = ({ level }) => {
     if (level === CleanerLevel.BRONZE) return null;
     const styles = {
-        [CleanerLevel.SILVER]: { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-700', icon: '🥈', label: 'Silver' },
-        [CleanerLevel.GOLD]: { bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-700', icon: '🥇', label: 'Gold' }
+        [CleanerLevel.SILVER]: { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-700', icon: '🥈', label: 'Silver Pro' },
+        [CleanerLevel.GOLD]: { bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-700', icon: '🥇', label: 'Gold Pro' }
     };
     const style = styles[level] || styles[CleanerLevel.SILVER];
     return (
@@ -71,15 +70,11 @@ const CleanerSearch: React.FC = () => {
     setIsLoading(true);
     const timer = setTimeout(() => {
         if (zip) {
-            // Unified Matching Logic from AppContext (Normalized)
             const baseResults = searchCleaners(zip, filterService === 'All' ? undefined : filterService);
-            
-            // Client-side Experience Filtering
             const filtered = baseResults.filter(cleaner => {
                 if (filterExperience !== 'Any' && cleaner.yearsExperience < parseInt(filterExperience)) return false;
                 return true;
             });
-            
             setResults(filtered);
         }
         setIsLoading(false);
@@ -96,7 +91,7 @@ const CleanerSearch: React.FC = () => {
                     <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                         Professionals in <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">{zip}</span>
                     </h2>
-                    {!isLoading && <p className="text-xs text-gray-500 mt-1">Showing {results.length} verified and listed professionals</p>}
+                    {!isLoading && <p className="text-xs text-gray-500 mt-1">Showing {results.length} verified house cleaners</p>}
                 </div>
                 <button onClick={() => navigate('/')} className="text-sm font-medium text-slate-500 hover:text-slate-800 underline decoration-slate-300 underline-offset-4">Change Location</button>
             </div>
@@ -138,9 +133,9 @@ const CleanerSearch: React.FC = () => {
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <svg className="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tighter">No active professionals here yet</h3>
-            <p className="text-gray-500 mb-10 text-sm leading-relaxed">We are strictly verifying new professionals in this area. In the meantime, try <strong>Express Match™</strong> to reach our network immediately.</p>
-            <button onClick={() => navigate('/express')} className="bg-green-500 text-white px-10 py-4 rounded-2xl font-black uppercase text-sm shadow-xl hover:bg-green-600 transition transform hover:scale-105">Request via Express Match™</button>
+            <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tighter">No cleaners found in this area</h3>
+            <p className="text-gray-500 mb-10 text-sm leading-relaxed">We are strictly verifying new professionals in this area. Try our <strong>Express Match™</strong> to reach our network immediately.</p>
+            <button onClick={() => navigate('/express-match')} className="bg-green-500 text-white px-10 py-4 rounded-2xl font-black uppercase text-sm shadow-xl hover:bg-green-600 transition transform hover:scale-105">Try Express Match™</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in">
@@ -151,7 +146,7 @@ const CleanerSearch: React.FC = () => {
                   <div className="absolute top-4 left-4">
                      <span className="bg-white/95 backdrop-blur-sm text-green-700 text-[10px] font-black px-3 py-1.5 rounded-full shadow-md border border-white flex items-center gap-1.5">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                        VERIFIED PRO
+                        VERIFIED
                       </span>
                   </div>
                   {cleaner.level !== CleanerLevel.BRONZE && (
@@ -159,13 +154,12 @@ const CleanerSearch: React.FC = () => {
                           <LevelBadge level={cleaner.level} />
                       </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </div>
                 <div className="p-8 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-4">
                         <div>
                             <h3 className="text-2xl font-black text-gray-900 group-hover:text-blue-600 transition-colors leading-tight">{cleaner.companyName || cleaner.fullName}</h3>
-                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">{cleaner.city}, {cleaner.state} • {cleaner.yearsExperience}+ Years Exp</p>
+                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">{cleaner.city}, {cleaner.state} • {cleaner.yearsExperience}+ Yrs Experience</p>
                         </div>
                         <div className="text-right">
                              <div className="flex items-center gap-1 justify-end"><span className="font-black text-slate-900">{cleaner.rating || 5.0}</span><span className="text-yellow-400 text-lg">★</span></div>
@@ -173,19 +167,18 @@ const CleanerSearch: React.FC = () => {
                         </div>
                     </div>
                     
-                    <p className="text-slate-600 text-sm line-clamp-3 mb-6 leading-relaxed font-medium italic">"{cleaner.description || 'Dedicated to providing a spotless and comfortable environment for your family.'}"</p>
+                    <p className="text-slate-600 text-sm line-clamp-3 mb-6 leading-relaxed font-medium italic">"{cleaner.description || 'Professional cleaner committed to high-quality results for your home.'}"</p>
 
                     <div className="flex flex-wrap gap-1.5 mb-8">
                         {cleaner.services.slice(0, 4).map(s => (
                             <span key={s} className="bg-slate-50 text-slate-500 text-[9px] font-black uppercase px-2 py-1 rounded-lg border border-slate-100 tracking-tighter">
-                                {SERVICE_UI_MAP_EN[s] || 'Standard Clean'}
+                                {SERVICE_UI_MAP_EN[s] || 'Cleaning'}
                             </span>
                         ))}
-                        {cleaner.services.length > 4 && <span className="text-[9px] text-slate-400 font-black self-center">+{cleaner.services.length - 4}</span>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 mt-auto">
-                        <a href={`tel:${cleaner.phone}`} className="flex items-center justify-center bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition shadow-lg">Call Now</a>
+                        <a href={`tel:${cleaner.phone}`} className="flex items-center justify-center bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition shadow-lg">Call</a>
                         <a href={`sms:${cleaner.phone}`} className="flex items-center justify-center bg-white border-2 border-slate-100 text-slate-900 py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:border-green-500 hover:text-green-600 transition">Text</a>
                     </div>
                 </div>
