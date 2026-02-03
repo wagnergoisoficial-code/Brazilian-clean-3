@@ -2,10 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const handler = async (event: any) => {
-  const REQUEST_ID = `req_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  const START_TIME = Date.now();
-  const TIMEOUT_LIMIT = 6000; 
-
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
@@ -13,96 +9,94 @@ export const handler = async (event: any) => {
     "Content-Type": "application/json"
   };
 
-  const log = (status: string, details: string = "") => {
-    const duration = Date.now() - START_TIME;
-    console.log(`[Luna Backend] [${REQUEST_ID}] ${status} (${duration}ms) ${details}`);
-  };
-
-  const returnFallback = (errorReason: string) => {
-    log("FAILED", errorReason);
-    return {
-      statusCode: 200, 
-      headers,
-      body: JSON.stringify({ 
-        text: "I am currently unable to access my primary knowledge base. However, you can find answers to most questions about Pricing, Registration, or Finding a Cleaner on our Home and Support pages." 
-      })
-    };
-  };
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "OK" };
+  }
 
   try {
-    log("STARTED");
-
-    if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers, body: "OK" };
-    if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ error: "Method Not Allowed" }) };
-
-    if (!event.body) throw new Error("Empty Body");
-    
-    let parsedBody;
-    try {
-      parsedBody = JSON.parse(event.body);
-    } catch (e) {
-      throw new Error("Invalid JSON Body");
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("Missing API_KEY environment variable");
     }
 
-    const { contents, systemInstruction } = parsedBody;
+    const ai = new GoogleGenAI({ apiKey });
+    const body = JSON.parse(event.body || "{}");
+    const { action } = body;
 
-    // Fix: Initialize GoogleGenAI using a named parameter with process.env.API_KEY
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-    // --- LIVE AI EXECUTION (PRODUCTION PATH) ---
-    if (process.env.API_KEY) {
-      const aiCallPromise = ai.models.generateContent({
+    // --- ROUTER: TRANSLATION (BILINGUAL CHAT BRIDGE) ---
+    if (action === 'TRANSLATE') {
+      const { message, sourceLang, targetLang } = body;
+      const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: contents,
+        contents: message,
         config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.3,
-          maxOutputTokens: 350,
-          thinkingConfig: { thinkingBudget: 100 }
+          systemInstruction: `You are a specialized translator for a high-end cleaning marketplace.
+          Context: Chat between an American homeowner (Client) and a Brazilian professional (Cleaner).
+          
+          TASK:
+          - Translate from ${sourceLang === 'en' ? 'English' : 'Portuguese (Brazil)'} to ${targetLang === 'en' ? 'English' : 'Portuguese (Brazil)'}.
+          - Maintain a professional and friendly tone.
+          - Preserve cleaning terms (e.g., "Deep Clean", "Faxina Pesada").
+          - Output ONLY the translated text. No commentary.`,
+          temperature: 0.1,
         }
       });
-
-      const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("EXECUTION_TIMEOUT")), TIMEOUT_LIMIT);
-      });
-
-      const response: any = await Promise.race([aiCallPromise, timeoutPromise]);
-      log("SUCCESS");
-      
-      // Fix: Access .text property directly from the response object
-      const text = response?.text || "I'm not sure how to answer that.";
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ text })
-      };
-    } else {
-      // --- EMERGENCY FALLBACK (IF API KEY IS MISSING IN PRODUCTION) ---
-      log("OFFLINE_MODE_FALLBACK");
-      const lastUserMsg = contents.filter((c: any) => c.role === 'user').pop()?.parts?.[0]?.text?.toLowerCase() || "";
-      let mockResponse = "I am currently operating in Safe Mode. I can assist with basic platform navigation.";
-
-      if (lastUserMsg.match(/\b(hello|hi|hey|olá|oi|bom dia|boa tarde|boa noite)\b/)) {
-        mockResponse = "Hello. I am Luna (Safe Mode). I can help you navigate Brazilian Clean. Are you a Client looking for a cleaner, or a Professional looking to join?";
-      } else if (lastUserMsg.match(/\b(price|cost|pay|subscription|fee|quanto|custo|valor|pagamento|assinatura)\b/)) {
-        mockResponse = "For Cleaners: $180/month (first 2 months), then $260/month. For Clients: Free.";
-      } else if (lastUserMsg.match(/\b(join|register|sign up|work|job|cadastro|cadastrar|trabalho|emprego)\b/)) {
-        mockResponse = "Professionals can join our network by clicking 'For Cleaners' in the navigation menu. Verification is required.";
-      } else if (lastUserMsg.match(/\b(find|search|looking for|need|hire|contract|busco|preciso|procurando|contratar|cleaner|limpeza|cleaning)\b/)) {
-        mockResponse = "To find a verified cleaner, please use the search bar on our Home page. You can filter by ZIP code.";
-      } else if (lastUserMsg.match(/\b(help|support|contact|issue|problem|ajuda|suporte|contato|problema|erro)\b/)) {
-        mockResponse = "Please visit our Support page to contact our team directly via WhatsApp or Email.";
-      }
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ text: mockResponse })
-      };
+      return { statusCode: 200, headers, body: JSON.stringify({ text: response.text }) };
     }
 
+    // --- ROUTER: LUNA CONCIERGE (NAVIGATION & SUPPORT) ---
+    if (action === 'LUNA_CHAT') {
+      const { history, userRole, pageContext } = body;
+      const isProfessional = userRole === 'CLEANER' || userRole === 'ADMIN';
+      const languageTarget = isProfessional ? 'Portuguese (PT-BR)' : 'English (US)';
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: history.map((h: any) => ({
+          role: h.role === 'model' ? 'model' : 'user',
+          parts: [{ text: h.text }]
+        })),
+        config: {
+          systemInstruction: `You are LUNA, the native concierge for Brazilian Clean.
+          IDENTITY: ${isProfessional ? 'Friendly and supportive for Brazilian pros.' : 'Professional and native for American homeowners.'}
+          CONTEXT: You are on the ${pageContext} page.
+          STRICT LANGUAGE RULE: Speak ONLY in ${languageTarget}.`,
+          temperature: 0.7,
+        }
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ text: response.text }) };
+    }
+
+    // --- ROUTER: IDENTITY VERIFICATION ---
+    if (action === 'VERIFY_IDENTITY') {
+      const { assets, userProfile } = body;
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: [
+            { text: `Verify if these documents belong to ${userProfile.fullName}. 
+                     Check for photo matches between ID and Selfie. 
+                     Return JSON with verification_status, confidence_score, and summary.` },
+            { inlineData: { mimeType: "image/jpeg", data: assets.facePhoto.split(',')[1] } },
+            { inlineData: { mimeType: "image/jpeg", data: assets.docFront.split(',')[1] } },
+            { inlineData: { mimeType: "image/jpeg", data: assets.selfieWithDoc.split(',')[1] } }
+          ]
+        },
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+      return { statusCode: 200, headers, body: response.text };
+    }
+
+    return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid Action" }) };
+
   } catch (error: any) {
-    return returnFallback(error.message || "Unknown Error");
+    console.error("[Backend AI Error]", error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message || "Internal Server Error" })
+    };
   }
 };

@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface Props {
@@ -15,17 +15,13 @@ interface State {
  * SystemGuardian component provides a safety layer to catch UI errors.
  * Uses a class component as Error Boundaries are not yet available as hooks in React.
  */
-// Fix: Explicitly extending React.Component to ensure 'props' and 'state' are correctly recognized by TypeScript.
-class SystemGuardian extends React.Component<Props, State> {
-  // Initialize state as a class property with explicit typing.
+// Fix: Explicitly extending Component from React and removing redundant constructor to ensure inheritance is properly handled.
+class SystemGuardian extends Component<Props, State> {
+  // Initialize state directly as a property of the class.
   public state: State = {
     hasError: false,
     error: null
   };
-
-  constructor(props: Props) {
-    super(props);
-  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -38,7 +34,7 @@ class SystemGuardian extends React.Component<Props, State> {
   render(): ReactNode {
     // Accessing state and props from 'this'.
     const { hasError, error } = this.state;
-    // Fix: Accessing children from this.props which is now correctly inherited from React.Component.
+    // Fix: Accessing children from this.props, which is now correctly recognized as an inherited property from Component.
     const { children } = this.props;
 
     if (hasError) {
