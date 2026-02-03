@@ -18,18 +18,31 @@ const Navbar: React.FC = () => {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 md:h-20 gap-2">
           
-          {/* BRAND IDENTITY */}
+          {/* BRAND IDENTITY & LOGO */}
           <div className="flex items-center shrink-0">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="flex -space-x-1">
-                <div className="w-8 h-8 bg-[#009739] rounded-lg flex items-center justify-center text-white shadow-sm transition-transform group-hover:-translate-x-1">
-                  <span className="text-[10px] font-black">BR</span>
+              <div className="relative">
+                {/* PROFESSIONAL BRAZILIAN CLEANER LOGO */}
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl shadow-md border border-slate-100 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105">
+                  <svg viewBox="0 0 100 100" className="w-8 h-8 md:w-10 md:h-10">
+                    {/* Abstract House Shape */}
+                    <path d="M20 45 L50 20 L80 45 V80 H20 Z" fill="#009739" />
+                    {/* Sparkle representing 'Clean' */}
+                    <path d="M70 15 L72 22 L79 24 L72 26 L70 33 L68 26 L61 24 L68 22 Z" fill="#FEDD00" className="animate-pulse" />
+                    {/* US Detail */}
+                    <rect x="40" y="55" width="20" height="25" fill="#002868" />
+                    <path d="M50 60 L52 65 L57 65 L53 68 L54 73 L50 70 L46 73 L47 68 L43 65 L48 65 Z" fill="white" />
+                  </svg>
                 </div>
-                <div className="w-8 h-8 bg-[#002868] rounded-lg flex items-center justify-center text-white shadow-sm transition-transform group-hover:translate-x-1">
-                  <span className="text-[10px] font-black">US</span>
+                {/* Status indicator on logo */}
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#FEDD00] rounded-full border-2 border-white shadow-sm flex items-center justify-center">
+                   <div className="w-1.5 h-1.5 bg-[#009739] rounded-full"></div>
                 </div>
               </div>
-              <span className="font-bold text-base md:text-lg text-slate-900 tracking-tight hidden xs:block">Brazilian Clean</span>
+              <div className="flex flex-col">
+                <span className="font-black text-sm md:text-base text-slate-900 tracking-tighter leading-none uppercase">Brazilian</span>
+                <span className="font-bold text-[10px] md:text-xs text-[#009739] tracking-widest uppercase leading-none mt-0.5">Cleaner</span>
+              </div>
             </Link>
           </div>
 

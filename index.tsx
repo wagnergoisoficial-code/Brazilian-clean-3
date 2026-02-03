@@ -1,5 +1,6 @@
+
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import App from './App';
 import SystemGuardian from './components/SystemGuardian';
 import './assets/css/main.css';
@@ -7,7 +8,9 @@ import './assets/css/main.css';
 // Carregamento defensivo do serviço de backup
 try {
   import('./services/systemGuardianService').then(m => {
-    m.performAutoBackup();
+    if (typeof m.performAutoBackup === 'function') {
+      m.performAutoBackup();
+    }
   }).catch(err => {
     console.warn("[System] Backup service failed to load, proceeding to UI.", err);
   });
@@ -18,7 +21,7 @@ try {
 const rootElement = document.getElementById('root');
 
 if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
+  const root = createRoot(rootElement);
   root.render(
     <SystemGuardian>
       <App />

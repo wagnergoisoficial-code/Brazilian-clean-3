@@ -11,17 +11,15 @@ interface State {
   error: Error | null;
 }
 
-/**
- * SystemGuardian component provides a safety layer to catch UI errors.
- * Uses a class component as Error Boundaries are not yet available as hooks in React.
- */
-// Fix: Explicitly extending Component from React and removing redundant constructor to ensure inheritance is properly handled.
+// Fixed: Added explicit constructor and ensured generic types are correctly applied to React.Component
 class SystemGuardian extends Component<Props, State> {
-  // Initialize state directly as a property of the class.
-  public state: State = {
-    hasError: false,
-    error: null
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -32,20 +30,19 @@ class SystemGuardian extends Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Accessing state and props from 'this'.
+    // Fixed: Explicitly using 'this' to access state and props in class component
     const { hasError, error } = this.state;
-    // Fix: Accessing children from this.props, which is now correctly recognized as an inherited property from Component.
     const { children } = this.props;
 
     if (hasError) {
       return (
-        <div key="system-error-overlay" className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-sans overflow-hidden">
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-sans overflow-hidden">
           <div className="max-w-xl w-full bg-slate-800 rounded-2xl shadow-2xl border border-red-500/30 p-8 text-center animate-scale-in">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500">
                <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             </div>
             <h1 className="text-2xl font-bold mb-2">Recuperação de Sistema</h1>
-            <p className="text-slate-400 mb-6 text-sm">O Guardião interceptou um erro crítico no núcleo do sistema (v{SYSTEM_IDENTITY.VERSION}).</p>
+            <p className="text-slate-400 mb-6 text-sm">O Guardião interceptou um erro crítico (v{SYSTEM_IDENTITY.VERSION}).</p>
             
             <div className="bg-black/30 rounded-lg p-4 mb-6 text-left overflow-auto max-h-32 border border-slate-700 custom-scrollbar">
               <code className="text-[10px] text-red-300 font-mono whitespace-pre-wrap">
@@ -60,19 +57,13 @@ class SystemGuardian extends Component<Props, State> {
                 >
                   Tentar Novamente
                 </button>
-                <button 
-                  onClick={() => { localStorage.clear(); window.location.reload(); }} 
-                  className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg transition text-xs opacity-60"
-                >
-                  Limpar Cache e Recarregar (Último Recurso)
-                </button>
             </div>
           </div>
         </div>
       );
     }
 
-    return children ? <div key="app-wrapper">{children}</div> : null;
+    return children;
   }
 }
 

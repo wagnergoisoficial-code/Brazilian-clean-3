@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
-  CleanerProfile, CleanerStatus, UserRole, Lead, ChatRoom, ChatMessage, CleanerLevel 
+  CleanerProfile, CleanerStatus, UserRole, Lead, ChatRoom, ChatMessage, CleanerLevel,
+  SupportRequest, SupportStatus, SupportType, TeamMember, AuditLog, EmailNotification
 } from '../types';
 import { translateChatMessage } from '../services/geminiService';
 
@@ -10,9 +11,20 @@ interface AppContextType {
   leads: Lead[];
   chatRooms: ChatRoom[];
   chatMessages: ChatMessage[];
+  supportRequests: SupportRequest[];
+  teamMembers: TeamMember[];
+  auditLogs: AuditLog[];
   userRole: UserRole;
   authenticatedCleanerId: string | null;
   isHydrated: boolean;
+  isChatOpen: boolean;
+  lastEmail: EmailNotification | null;
+  pendingClientCode: string | null;
+  pendingClientEmail: string | null;
+  pendingClientCodeExpires: number | null;
+  
+  setIsChatOpen: (open: boolean) => void;
+  clearLastEmail: () => void;
   loginCleaner: (email: string, password: string) => Promise<CleanerProfile | null>;
   registerCleaner: (data: Partial<CleanerProfile>) => Promise<string>;
   logout: () => void;
@@ -22,6 +34,15 @@ interface AppContextType {
   getRoomForLead: (leadId: string) => ChatRoom | undefined;
   getMessagesForRoom: (roomId: string) => ChatMessage[];
   updateCleanerProfile: (id: string, data: Partial<CleanerProfile>) => void;
+  verifyCleanerCode: (id: string, code: string) => { success: boolean; error?: string };
+  resendCleanerCode: (id: string) => Promise<void>;
+  resendClientCode: () => Promise<void>;
+  createSupportRequest: (req: Partial<SupportRequest>) => void;
+  verifyCleaner: (id: string, adminId: string) => void;
+  rejectCleaner: (id: string, adminId: string) => void;
+  deleteCleaner: (id: string, adminId: string) => void;
+  updateSupportStatus: (id: string, status: SupportStatus) => void;
+  requestPasswordReset: (email: string) => Promise<void>;
   [key: string]: any;
 }
 
@@ -32,9 +53,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  
   const [userRole, setUserRole] = useState<UserRole>(UserRole.CLIENT);
   const [authenticatedCleanerId, setAuthenticatedCleanerId] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [lastEmail, setLastEmail] = useState<EmailNotification | null>(null);
+
+  const [pendingClientCode, setPendingClientCode] = useState<string | null>(null);
+  const [pendingClientEmail, setPendingClientEmail] = useState<string | null>(null);
+  const [pendingClientCodeExpires, setPendingClientCodeExpires] = useState<number | null>(null);
 
   useEffect(() => {
     const hydrate = () => {
@@ -49,9 +80,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLeads(safeParse('bc_leads', []));
       setChatRooms(safeParse('bc_chat_rooms', []));
       setChatMessages(safeParse('bc_chat_messages', []));
+      setSupportRequests(safeParse('bc_support', []));
+      setTeamMembers(safeParse('bc_team', []));
+      setAuditLogs(safeParse('bc_logs', []));
       
       const cleanerId = localStorage.getItem('bc_auth_cleaner_id');
-      if (cleanerId) { setAuthenticatedCleanerId(cleanerId); setUserRole(UserRole.CLEANER); }
+      if (cleanerId) { 
+        setAuthenticatedCleanerId(cleanerId); 
+        setUserRole(UserRole.CLEANER); 
+      }
       setIsHydrated(true);
     };
     hydrate();
@@ -63,8 +100,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem('bc_leads', JSON.stringify(leads));
       localStorage.setItem('bc_chat_rooms', JSON.stringify(chatRooms));
       localStorage.setItem('bc_chat_messages', JSON.stringify(chatMessages));
+      localStorage.setItem('bc_support', JSON.stringify(supportRequests));
+      localStorage.setItem('bc_team', JSON.stringify(teamMembers));
+      localStorage.setItem('bc_logs', JSON.stringify(auditLogs));
     }
-  }, [cleaners, leads, chatRooms, chatMessages, isHydrated]);
+  }, [cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs, isHydrated]);
 
   const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
     const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
@@ -79,9 +119,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    const firstName = data.fullName ? data.fullName.split(' ')[0] : 'Profissional';
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // Fix: Adding missing serviceRadius property to satisfy the CleanerProfile interface.
     const newCleaner: CleanerProfile = {
       id,
       fullName: data.fullName || '',
@@ -98,6 +137,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       reviewCount: 0,
       joinedDate: new Date().toISOString(),
       emailVerified: false,
+      verificationCode: code,
+      verificationCodeExpires: Date.now() + 600000,
       photoUrl: '',
       galleryUrls: [],
       portfolio: [],
@@ -118,20 +159,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setUserRole(UserRole.CLEANER);
     localStorage.setItem('bc_auth_cleaner_id', id);
 
-    // Trigger Welcome Email (Server-side)
-    try {
-      fetch('/.netlify/functions/sendWelcomeEmail', {
-        method: 'POST',
-        body: JSON.stringify({
-          to: newCleaner.email,
-          firstName: firstName
-        })
-      });
-    } catch (e) {
-      console.error("Welcome email trigger failed", e);
-    }
+    setLastEmail({
+      to: newCleaner.email,
+      subject: "Seu código de verificação",
+      body: `Olá! Seu código para ativar sua conta é: ${code}`,
+      actionLink: `/verify?id=${id}&code=${code}`,
+      actionText: "Verificar Conta"
+    });
 
     return id;
+  };
+
+  const verifyCleanerCode = (id: string, code: string) => {
+    const cleaner = cleaners.find(c => c.id === id);
+    if (!cleaner) return { success: false, error: "Profissional não encontrado." };
+    if (cleaner.verificationCode === code) {
+      updateCleanerProfile(id, { emailVerified: true, status: CleanerStatus.BUSINESS_PENDING });
+      return { success: true };
+    }
+    return { success: false, error: "Código incorreto." };
   };
 
   const logout = () => {
@@ -142,8 +188,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
     const newLead: Lead = { ...l, id, status: 'OPEN', createdAt: Date.now() } as Lead;
     setLeads(prev => [newLead, ...prev]);
+
+    setPendingClientCode(code);
+    setPendingClientEmail(l.clientEmail || '');
+    setPendingClientCodeExpires(Date.now() + 600000);
 
     const roomId = `room_${id}`;
     const newRoom: ChatRoom = {
@@ -154,6 +206,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: Date.now()
     };
     setChatRooms(prev => [...prev, newRoom]);
+
+    setLastEmail({
+      to: l.clientEmail || '',
+      subject: "Verify your cleaning request",
+      body: `Your verification code is: ${code}`,
+      actionLink: `/verify?type=client&code=${code}`,
+      actionText: "Verify Request"
+    });
   };
 
   const acceptLead = (leadId: string, cleanerId: string) => {
@@ -178,18 +238,99 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setChatMessages(prev => [...prev, newMessage]);
   };
 
-  const getRoomForLead = (leadId: string) => chatRooms.find(r => r.leadId === leadId);
-  const getMessagesForRoom = (roomId: string) => chatMessages.filter(m => m.chatRoomId === roomId);
+  const createSupportRequest = (req: Partial<SupportRequest>) => {
+    const newReq: SupportRequest = {
+      ...req,
+      id: Math.random().toString(36).substr(2, 9),
+      status: SupportStatus.NEW,
+      createdAt: new Date().toISOString()
+    } as SupportRequest;
+    setSupportRequests(prev => [newReq, ...prev]);
+  };
+
+  const updateSupportStatus = (id: string, status: SupportStatus) => {
+    setSupportRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+  };
 
   const updateCleanerProfile = (id: string, data: Partial<CleanerProfile>) => {
     setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
+  const verifyCleaner = (id: string, adminId: string) => {
+    updateCleanerProfile(id, { status: CleanerStatus.VERIFIED, isListed: true });
+    setAuditLogs(prev => [{
+      id: Math.random().toString(36).substr(2, 9),
+      adminId,
+      adminName: "Admin",
+      action: "VERIFY_CLEANER",
+      targetId: id,
+      targetType: 'CLEANER',
+      timestamp: new Date().toISOString(),
+      details: "Documents verified manually"
+    }, ...prev]);
+  };
+
+  const rejectCleaner = (id: string, adminId: string) => {
+    updateCleanerProfile(id, { status: CleanerStatus.REJECTED });
+  };
+
+  const deleteCleaner = (id: string, adminId: string) => {
+    setCleaners(prev => prev.filter(c => c.id !== id));
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    console.log("Password reset requested for", email);
+  };
+
+  const resendCleanerCode = async (id: string) => {
+    const cleaner = cleaners.find(c => c.id === id);
+    if (cleaner) {
+      setLastEmail({
+        to: cleaner.email,
+        subject: "Seu novo código",
+        body: `Seu novo código é: ${cleaner.verificationCode}`,
+        actionLink: `/verify?id=${id}`,
+        actionText: "Verificar"
+      });
+    }
+  };
+
+  const resendClientCode = async () => {
+    if (pendingClientEmail && pendingClientCode) {
+      setLastEmail({
+        to: pendingClientEmail,
+        subject: "New verification code",
+        body: `Your new code is: ${pendingClientCode}`,
+        actionLink: `/verify?type=client`,
+        actionText: "Verify"
+      });
+    }
+  };
+
+  const searchCleaners = (zip: string, service?: string) => {
+    return cleaners.filter(c => {
+      if (c.status !== CleanerStatus.VERIFIED) return false;
+      const servesZip = c.zipCodes.includes(zip) || c.baseZip === zip;
+      if (!servesZip) return false;
+      if (service && !c.services.includes(service)) return false;
+      return true;
+    });
+  };
+
+  const getRoomForLead = (leadId: string) => chatRooms.find(r => r.leadId === leadId);
+  const getMessagesForRoom = (roomId: string) => chatMessages.filter(m => m.chatRoomId === roomId);
+  const clearLastEmail = () => setLastEmail(null);
+
   return (
     <AppContext.Provider value={{ 
-      cleaners, leads, chatRooms, chatMessages, userRole, authenticatedCleanerId, isHydrated,
-      loginCleaner, registerCleaner, logout, createLead, acceptLead, sendChatMessage, 
-      getRoomForLead, getMessagesForRoom, updateCleanerProfile
+      cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs,
+      userRole, authenticatedCleanerId, isHydrated, isChatOpen, lastEmail,
+      pendingClientCode, pendingClientEmail, pendingClientCodeExpires,
+      setIsChatOpen, clearLastEmail, loginCleaner, registerCleaner, logout, createLead, 
+      acceptLead, sendChatMessage, getRoomForLead, getMessagesForRoom, updateCleanerProfile,
+      verifyCleanerCode, resendCleanerCode, resendClientCode, createSupportRequest,
+      verifyCleaner, rejectCleaner, deleteCleaner, updateSupportStatus, requestPasswordReset,
+      searchCleaners
     }}>
       {children}
     </AppContext.Provider>
