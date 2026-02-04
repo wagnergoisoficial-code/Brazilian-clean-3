@@ -65,6 +65,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
   };
 
   const handleConfirm = () => {
+    if (!hasInteracted) return;
     if (!imageRef.current || !containerRef.current) return;
 
     // Create high-res canvas
@@ -176,7 +177,8 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
             <button 
                 type="button" 
                 onClick={handleConfirm} 
-                className={`w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-xs md:text-sm shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 ${hasInteracted ? 'bg-green-600 text-white shadow-green-200' : 'bg-slate-300 text-slate-500'}`}
+                disabled={!hasInteracted}
+                className={`w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-xs md:text-sm shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 ${hasInteracted ? 'bg-green-600 text-white shadow-green-200' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
             >
                 Confirmar e Salvar Documento
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
