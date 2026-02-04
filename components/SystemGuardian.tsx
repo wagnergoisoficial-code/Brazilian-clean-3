@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface Props {
@@ -13,18 +13,13 @@ interface State {
 
 /**
  * SystemGuardian component that acts as a top-level error boundary.
- * Fixed: Explicitly extends React.Component and ensures state/props are correctly recognized by the TypeScript compiler.
+ * Extends Component to provide error boundary lifecycle methods.
  */
-class SystemGuardian extends React.Component<Props, State> {
-  // Explicitly define the state property to ensure the compiler recognizes it as part of the class.
+class SystemGuardian extends Component<Props, State> {
   state: State = {
     hasError: false,
     error: null
   };
-
-  constructor(props: Props) {
-    super(props);
-  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -35,7 +30,6 @@ class SystemGuardian extends React.Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Fixed: Explicitly accessing state and props from 'this' to avoid property not found errors.
     const { hasError, error } = this.state;
     const { children } = this.props;
 

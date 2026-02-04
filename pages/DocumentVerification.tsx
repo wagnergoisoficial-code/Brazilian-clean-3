@@ -18,7 +18,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
   const [scale, setScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false); // Track if user has touched/moved
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -28,16 +28,28 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
     setHasInteracted(false);
   }, [imageSrc]);
 
-  const handleStart = (clientX: number, clientY: number) => {
-    setIsDragging(true);
-    setDragStart({ x: clientX - position.x, y: clientY - position.y });
+  // Unified Event Handlers for Touch and Mouse
+  const getClientCoords = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+    if ('touches' in e) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
   };
 
-  const handleMove = (clientX: number, clientY: number) => {
+  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault(); // Prevent scrolling on mobile
+    setIsDragging(true);
+    const coords = getClientCoords(e);
+    setDragStart({ x: coords.x - position.x, y: coords.y - position.y });
+  };
+
+  const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
+    e.preventDefault(); 
+    const coords = getClientCoords(e);
     setPosition({
-      x: clientX - dragStart.x,
-      y: clientY - dragStart.y
+      x: coords.x - dragStart.x,
+      y: coords.y - dragStart.y
     });
     if (!hasInteracted) setHasInteracted(true);
   };
@@ -55,60 +67,66 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
   const handleConfirm = () => {
     if (!imageRef.current || !containerRef.current) return;
 
+    // Create high-res canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Desired output resolution (HD)
     const targetWidth = 1280;
     const targetHeight = targetWidth / aspectRatio;
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
+    // Calculate cropping based on visual representation
     const rect = containerRef.current.getBoundingClientRect();
     const imgRect = imageRef.current.getBoundingClientRect();
 
-    const naturalWidth = imageRef.current.naturalWidth;
-    const naturalHeight = imageRef.current.naturalHeight;
+    // Ratio of Natural Image Size vs Displayed Size
+    const scaleX = imageRef.current.naturalWidth / imgRect.width;
+    const scaleY = imageRef.current.naturalHeight / imgRect.height;
 
-    const scaleX = naturalWidth / imgRect.width;
-    const scaleY = naturalHeight / imgRect.height;
-
+    // Calculate Source Coordinates (sx, sy, sWidth, sHeight)
+    // The visual "window" (rect) relative to the image (imgRect)
     const sx = (rect.left - imgRect.left) * scaleX;
     const sy = (rect.top - imgRect.top) * scaleY;
     const sWidth = rect.width * scaleX;
     const sHeight = rect.height * scaleY;
 
+    // Draw the cropped portion
     ctx.drawImage(
       imageRef.current,
       sx, sy, sWidth, sHeight,
       0, 0, targetWidth, targetHeight
     );
 
-    onConfirm(canvas.toDataURL('image/jpeg', 0.9));
+    // Compress slightly for upload
+    onConfirm(canvas.toDataURL('image/jpeg', 0.85));
   };
 
   return (
-    <div key="editor-portal" className="fixed inset-0 bg-slate-900/98 z-[100] flex flex-col items-center justify-center p-4 animate-fade-in font-sans">
-      <div className="w-full max-w-lg bg-white rounded-[32px] overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+    <div key="editor-portal" className="fixed inset-0 bg-slate-900/98 z-[100] flex flex-col items-center justify-center p-4 animate-fade-in font-sans touch-none">
+      <div className="w-full max-w-lg bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
           <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{title}</h3>
           <button onClick={onCancel} className="text-slate-400 hover:text-slate-900 transition p-2 bg-white rounded-full shadow-sm hover:scale-110">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
         
-        <div className="p-8 space-y-6">
-          <div className="bg-blue-50 p-4 rounded-2xl mb-2">
+        <div className="p-4 md:p-8 space-y-4 md:space-y-6 flex-1 overflow-y-auto">
+          <div className="bg-blue-50 p-3 rounded-2xl mb-2">
              <p className="text-[11px] text-blue-700 font-bold text-center leading-relaxed">
-                Centralize o documento e ajuste o zoom para que as bordas fiquem visíveis dentro da área pontilhada.
+                Arraste e dê zoom para encaixar o documento dentro da área pontilhada.
              </p>
           </div>
           
-          <div className="relative w-full aspect-[3/2] bg-slate-200 rounded-3xl overflow-hidden border-4 border-slate-100 shadow-inner group">
+          <div className="relative w-full aspect-[3/2] bg-slate-200 rounded-3xl overflow-hidden border-4 border-slate-100 shadow-inner group touch-none">
+            {/* The "Hole" / Viewport */}
             <div className="absolute inset-0 z-10 pointer-events-none">
               <div 
                 ref={containerRef}
-                className="w-full h-full border-4 border-dashed border-white shadow-[0_0_0_9999px_rgba(15,23,42,0.65)]"
+                className="w-full h-full border-4 border-dashed border-white shadow-[0_0_0_9999px_rgba(15,23,42,0.75)] box-border"
               ></div>
             </div>
 
@@ -117,12 +135,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
               src={imageSrc}
               alt="Adjustment"
               draggable={false}
-              onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
-              onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
+              onMouseDown={handleStart}
+              onMouseMove={handleMove}
               onMouseUp={handleEnd}
               onMouseLeave={handleEnd}
-              onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
-              onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
+              onTouchStart={handleStart}
+              onTouchMove={handleMove}
               onTouchEnd={handleEnd}
               style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -134,34 +152,40 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageSrc, aspectRatio, onConf
                 position: 'absolute',
                 top: 0,
                 left: 0,
+                userSelect: 'none',
+                touchAction: 'none'
               }}
             />
           </div>
 
-          <div className="flex gap-8 items-center justify-center py-2">
-            <button onClick={() => handleZoom(-0.2)} className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm transition flex items-center justify-center hover:border-blue-300">
-               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
+          {/* Controls */}
+          <div className="flex gap-8 items-center justify-center py-2 shrink-0">
+            <button onClick={() => handleZoom(-0.2)} className="w-12 h-12 rounded-2xl bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm transition flex items-center justify-center hover:border-blue-300">
+               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
             </button>
             <div className="text-center min-w-[90px]">
-                <span className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1">Escala</span>
-                <span className="text-2xl font-black text-slate-900 tracking-tighter">{Math.round(scale * 100)}%</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase block tracking-widest mb-1">Zoom</span>
+                <span className="text-xl font-black text-slate-900 tracking-tighter">{Math.round(scale * 100)}%</span>
             </div>
-            <button onClick={() => handleZoom(0.2)} className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm transition flex items-center justify-center hover:border-blue-300">
-               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            <button onClick={() => handleZoom(0.2)} className="w-12 h-12 rounded-2xl bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm transition flex items-center justify-center hover:border-blue-300">
+               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 pt-4 border-t border-slate-100">
+          <div className={`grid grid-cols-1 gap-4 pt-4 border-t border-slate-100 shrink-0 transition-all duration-500 ${hasInteracted ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-2 pointer-events-none'}`}>
             <button 
                 type="button" 
                 onClick={handleConfirm} 
-                className={`w-full py-6 rounded-[28px] font-black uppercase tracking-widest text-sm shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-4 ${hasInteracted ? 'bg-green-600 text-white animate-pulse' : 'bg-blue-600 text-white'}`}
+                className={`w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-xs md:text-sm shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 ${hasInteracted ? 'bg-green-600 text-white shadow-green-200' : 'bg-slate-300 text-slate-500'}`}
             >
-                Confirmar e Salvar Ajuste
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                Confirmar e Salvar Documento
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
             </button>
-            <button type="button" onClick={onCancel} className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-slate-600 transition text-center">Descartar Alterações</button>
+            {!hasInteracted && <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ajuste a imagem para confirmar</p>}
           </div>
+          <button type="button" onClick={onCancel} className="w-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-slate-600 transition text-center py-2">
+              Cancelar
+          </button>
         </div>
       </div>
     </div>
@@ -192,6 +216,7 @@ const DocumentVerification: React.FC = () => {
   });
 
   // CRITICAL: Persistent interaction tracking for fields
+  // A field is only "Confirmed" if it has been saved via the Image Editor.
   const [fieldConfirmed, setFieldConfirmed] = useState<Record<string, boolean>>({
       docFront: false,
       docBack: false,
@@ -202,12 +227,14 @@ const DocumentVerification: React.FC = () => {
   useEffect(() => {
     if (!myProfile && !targetId) { navigate('/join'); }
     if (myProfile) {
+        // Load existing assets if any
         setAssets({
             docFront: myProfile.documentFrontUrl || '',
             docBack: myProfile.documentBackUrl || '',
             facePhoto: myProfile.facePhotoUrl || '',
             selfieWithDoc: myProfile.selfieWithDocUrl || ''
         });
+        
         // If profile already has data, treat them as confirmed
         setFieldConfirmed({
             docFront: !!myProfile.documentFrontUrl,
@@ -225,19 +252,25 @@ const DocumentVerification: React.FC = () => {
 
         const reader = new FileReader();
         reader.onload = () => {
+          // Immediately trigger the editor
           setTempImage(reader.result as string);
           setEditingField(field);
+          // We do NOT set the asset yet. User must confirm in editor.
         };
         reader.readAsDataURL(file);
+        
+        // Reset input value to allow re-uploading same file if needed
+        e.target.value = '';
     }
   };
 
   const onCropConfirm = (croppedBase64: string) => {
     if (editingField && targetId) { 
+        // 1. Update State
         setAssets(prev => ({ ...prev, [editingField]: croppedBase64 }));
         setFieldConfirmed(prev => ({ ...prev, [editingField]: true }));
         
-        // Persist immediately to prevent data loss on crash/reload
+        // 2. Persist immediately to prevent data loss on crash/reload
         const updateObj: any = {};
         if (editingField === 'docFront') updateObj.documentFrontUrl = croppedBase64;
         if (editingField === 'docBack') updateObj.documentBackUrl = croppedBase64;
@@ -246,49 +279,74 @@ const DocumentVerification: React.FC = () => {
         
         updateCleanerProfile(targetId, updateObj);
     }
+    // 3. Close Editor
     setEditingField(null);
     setTempImage(null);
   };
 
   const handleNext = () => {
-      if (step === 1 && (!assets.docFront || !assets.docBack)) return alert("Por favor, envie a frente e o verso do documento.");
-      if (step === 2 && !assets.facePhoto) return alert("Por favor, tire uma foto clara do seu rosto.");
+      if (step === 1 && (!assets.docFront || !assets.docBack || !fieldConfirmed.docFront || !fieldConfirmed.docBack)) {
+          return alert("Por favor, envie e confirme a frente e o verso do documento.");
+      }
+      if (step === 2 && (!assets.facePhoto || !fieldConfirmed.facePhoto)) {
+          return alert("Por favor, tire e confirme uma foto clara do seu rosto.");
+      }
       setStep(prev => prev + 1);
   };
 
   const handleFinalSubmission = async () => {
-    if (!assets.docFront || !assets.docBack || !assets.facePhoto || !assets.selfieWithDoc || !myProfile || !targetId) {
-        return alert("Por favor, capture e confirme todos os 4 documentos necessários.");
+    // 1. Validate All Fields
+    const allPresent = assets.docFront && assets.docBack && assets.facePhoto && assets.selfieWithDoc;
+    const allConfirmed = fieldConfirmed.docFront && fieldConfirmed.docBack && fieldConfirmed.facePhoto && fieldConfirmed.selfieWithDoc;
+    
+    if (!allPresent || !allConfirmed || !myProfile || !targetId) {
+        return alert("Incompleto. Certifique-se de que todos os 4 documentos foram enviados e confirmados.");
     }
 
     setIsVerifying(true);
     setVerificationFeedback(null);
     
     try {
+        // 2. Attempt AI Verification
+        // Note: verifyCleaner is NOT called here. This is purely for metadata/scoring.
+        // The actual status change happens if successful.
+        
         const aiResult = await performIdentityVerification(assets, { 
             fullName: myProfile.fullName, 
             email: myProfile.email 
         });
 
+        // 3. Handle Fraud Detection
         if (aiResult.verification_status === "LIKELY_FRAUD") {
             setVerificationFeedback(aiResult);
             setIsVerifying(false);
             return;
         }
 
+        // 4. Update Profile Status
         updateCleanerProfile(targetId, {
             status: CleanerStatus.UNDER_REVIEW,
             aiVerificationResult: aiResult
         });
 
-        // Defensive navigation with delay to prevent DOM races
-        setTimeout(() => navigate('/dashboard'), 800);
+        // 5. Navigate
+        setTimeout(() => navigate('/dashboard'), 1000);
 
     } catch (err) {
-        console.error("Critical AI Processing Error:", err);
-        // Safety Fallback: Move to Manual Review
-        updateCleanerProfile(targetId, { status: CleanerStatus.UNDER_REVIEW });
-        setTimeout(() => navigate('/dashboard'), 800);
+        console.error("Verification Service Error:", err);
+        
+        // FAIL-SAFE: If AI is down, do not block the user.
+        // Send to manual review queue.
+        updateCleanerProfile(targetId, { 
+            status: CleanerStatus.UNDER_REVIEW,
+            aiVerificationResult: {
+                verification_status: "NEEDS_MANUAL_REVIEW",
+                confidence_score: 0.0,
+                summary: "AI Service Unreachable. Manual fallback."
+            }
+        });
+        
+        setTimeout(() => navigate('/dashboard'), 1000);
     } finally {
         setIsVerifying(false);
     }
@@ -296,11 +354,16 @@ const DocumentVerification: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans overflow-x-hidden">
+      {/* OVERLAY EDITOR */}
       {editingField && tempImage && (
         <ImageEditor 
           key={`editor-overlay-${editingField}`}
           imageSrc={tempImage}
-          title={editingField.includes('doc') ? 'Ajustar Documento' : 'Enquadrar Foto'}
+          title={
+             editingField === 'docFront' ? 'Ajustar Frente do ID' :
+             editingField === 'docBack' ? 'Ajustar Verso do ID' :
+             editingField === 'facePhoto' ? 'Enquadrar Rosto' : 'Validar Biometria'
+          }
           aspectRatio={editingField === 'facePhoto' ? 1 : 3/2}
           onConfirm={onCropConfirm}
           onCancel={() => { setEditingField(null); setTempImage(null); }}
@@ -347,24 +410,16 @@ const DocumentVerification: React.FC = () => {
             {step === 1 && (
                 <div key="view-identity" className="space-y-12 animate-fade-in">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        {/* DOC FRONT */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center px-1">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Frente do ID</label>
-                                {assets.docFront && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100">Capturado ✓</span>}
+                                {assets.docFront && fieldConfirmed.docFront && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100">Confirmado ✓</span>}
                             </div>
                             <div className="relative group aspect-[3/2]">
-                                <div className={`w-full h-full rounded-[40px] border-4 border-dashed flex flex-col items-center justify-center transition-all duration-300 overflow-hidden bg-slate-50 ${assets.docFront ? 'border-green-500 shadow-2xl shadow-green-100' : 'border-slate-200 group-hover:border-blue-400'}`}>
+                                <div className={`w-full h-full rounded-[40px] border-4 border-dashed flex flex-col items-center justify-center transition-all duration-300 overflow-hidden bg-slate-50 ${assets.docFront && fieldConfirmed.docFront ? 'border-green-500 shadow-2xl shadow-green-100' : 'border-slate-200 group-hover:border-blue-400'}`}>
                                     {assets.docFront ? (
-                                        <>
-                                            <img src={assets.docFront} className="w-full h-full object-cover" alt="ID Frente" />
-                                            {!fieldConfirmed.docFront && (
-                                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px] flex items-center justify-center p-8 animate-fade-in z-40 rounded-[40px]">
-                                                    <button onClick={() => setFieldConfirmed(p => ({...p, docFront: true}))} className="w-full bg-green-500 text-white font-black text-xs uppercase py-4 rounded-[20px] shadow-2xl hover:scale-105 active:scale-95 transition tracking-widest border-2 border-white/20">
-                                                        Salvar Foto ✓
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
+                                        <img src={assets.docFront} className="w-full h-full object-cover" alt="ID Frente" />
                                     ) : (
                                         <div className="text-center p-6">
                                             <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-sm text-4xl border border-slate-100">🪪</div>
@@ -372,33 +427,29 @@ const DocumentVerification: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
+                                {/* Input covers entire area until confirmed. If confirmed, user must click 'Refazer' */}
                                 <input type="file" accept="image/*" onChange={e => handleFile(e, 'docFront')} className="absolute inset-0 opacity-0 cursor-pointer z-20" title="Upload frente" />
-                                {assets.docFront && fieldConfirmed.docFront && (
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center z-30 rounded-[40px] pointer-events-none">
-                                        <span className="text-white text-[10px] font-black uppercase tracking-widest bg-blue-600 px-8 py-3 rounded-full shadow-2xl">Refazer Foto</span>
+                                
+                                {assets.docFront && (
+                                    <div className={`absolute inset-0 bg-black/40 ${fieldConfirmed.docFront ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition flex items-center justify-center z-30 rounded-[40px] pointer-events-none`}>
+                                        <span className="text-white text-[10px] font-black uppercase tracking-widest bg-blue-600 px-6 py-3 rounded-full shadow-2xl backdrop-blur-md">
+                                            {fieldConfirmed.docFront ? 'Editar / Refazer' : 'Ajustar & Salvar'}
+                                        </span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
+                        {/* DOC BACK */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center px-1">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Verso do ID</label>
-                                {assets.docBack && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100">Capturado ✓</span>}
+                                {assets.docBack && fieldConfirmed.docBack && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100">Confirmado ✓</span>}
                             </div>
                             <div className="relative group aspect-[3/2]">
-                                <div className={`w-full h-full rounded-[40px] border-4 border-dashed flex flex-col items-center justify-center transition-all duration-300 overflow-hidden bg-slate-50 ${assets.docBack ? 'border-green-500 shadow-2xl shadow-green-100' : 'border-slate-200 group-hover:border-blue-400'}`}>
+                                <div className={`w-full h-full rounded-[40px] border-4 border-dashed flex flex-col items-center justify-center transition-all duration-300 overflow-hidden bg-slate-50 ${assets.docBack && fieldConfirmed.docBack ? 'border-green-500 shadow-2xl shadow-green-100' : 'border-slate-200 group-hover:border-blue-400'}`}>
                                     {assets.docBack ? (
-                                        <>
-                                            <img src={assets.docBack} className="w-full h-full object-cover" alt="ID Verso" />
-                                            {!fieldConfirmed.docBack && (
-                                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px] flex items-center justify-center p-8 animate-fade-in z-40 rounded-[40px]">
-                                                    <button onClick={() => setFieldConfirmed(p => ({...p, docBack: true}))} className="w-full bg-green-500 text-white font-black text-xs uppercase py-4 rounded-[20px] shadow-2xl hover:scale-105 active:scale-95 transition tracking-widest border-2 border-white/20">
-                                                        Salvar Foto ✓
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
+                                        <img src={assets.docBack} className="w-full h-full object-cover" alt="ID Verso" />
                                     ) : (
                                         <div className="text-center p-6">
                                             <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-sm text-4xl border border-slate-100">🔙</div>
@@ -407,9 +458,12 @@ const DocumentVerification: React.FC = () => {
                                     )}
                                 </div>
                                 <input type="file" accept="image/*" onChange={e => handleFile(e, 'docBack')} className="absolute inset-0 opacity-0 cursor-pointer z-20" title="Upload verso" />
-                                {assets.docBack && fieldConfirmed.docBack && (
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center z-30 rounded-[40px] pointer-events-none">
-                                        <span className="text-white text-[10px] font-black uppercase tracking-widest bg-blue-600 px-8 py-3 rounded-full shadow-2xl">Refazer Foto</span>
+                                
+                                {assets.docBack && (
+                                    <div className={`absolute inset-0 bg-black/40 ${fieldConfirmed.docBack ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition flex items-center justify-center z-30 rounded-[40px] pointer-events-none`}>
+                                        <span className="text-white text-[10px] font-black uppercase tracking-widest bg-blue-600 px-6 py-3 rounded-full shadow-2xl backdrop-blur-md">
+                                            {fieldConfirmed.docBack ? 'Editar / Refazer' : 'Ajustar & Salvar'}
+                                        </span>
                                     </div>
                                 )}
                             </div>
@@ -443,18 +497,9 @@ const DocumentVerification: React.FC = () => {
                                 {assets.facePhoto && fieldConfirmed.facePhoto && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100 shadow-sm">Confirmada ✓</span>}
                             </div>
                             <div className="relative group max-w-[340px] mx-auto">
-                                <div className={`aspect-square rounded-full border-4 border-dashed flex flex-col items-center justify-center transition-all duration-500 overflow-hidden bg-slate-50 ${assets.facePhoto ? 'border-green-500 ring-[16px] ring-green-50 shadow-2xl shadow-green-100/50' : 'border-slate-200 group-hover:border-blue-400'}`}>
+                                <div className={`aspect-square rounded-full border-4 border-dashed flex flex-col items-center justify-center transition-all duration-500 overflow-hidden bg-slate-50 ${assets.facePhoto && fieldConfirmed.facePhoto ? 'border-green-500 ring-[16px] ring-green-50 shadow-2xl shadow-green-100/50' : 'border-slate-200 group-hover:border-blue-400'}`}>
                                     {assets.facePhoto ? (
-                                        <>
-                                            <img src={assets.facePhoto} className="w-full h-full object-cover" alt="Face" />
-                                            {!fieldConfirmed.facePhoto && (
-                                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center rounded-full z-40 p-8">
-                                                    <button onClick={() => setFieldConfirmed(p => ({...p, facePhoto: true}))} className="bg-green-500 text-white font-black text-xs uppercase px-10 py-5 rounded-[24px] shadow-2xl hover:scale-105 active:scale-95 transition tracking-widest border-2 border-white/20">
-                                                        Salvar e Usar ✓
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
+                                        <img src={assets.facePhoto} className="w-full h-full object-cover" alt="Face" />
                                     ) : (
                                         <div className="text-center p-6">
                                             <div className="text-7xl mb-6 drop-shadow-sm">📸</div>
@@ -463,10 +508,13 @@ const DocumentVerification: React.FC = () => {
                                     )}
                                 </div>
                                 <input type="file" accept="image/*" capture="user" onChange={e => handleFile(e, 'facePhoto')} className="absolute inset-0 opacity-0 cursor-pointer z-20" title="Tirar foto" />
-                                {assets.facePhoto && fieldConfirmed.facePhoto && (
-                                    <div className="absolute bottom-8 right-8 bg-green-500 text-white p-4 rounded-full shadow-2xl z-30 border-[6px] border-white pointer-events-none">
-                                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
-                                    </div>
+                                
+                                {assets.facePhoto && (
+                                     <div className={`absolute inset-0 bg-slate-900/40 rounded-full ${fieldConfirmed.facePhoto ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition flex items-center justify-center z-30 pointer-events-none`}>
+                                         <span className="text-white text-[10px] font-black uppercase tracking-widest bg-blue-600 px-6 py-3 rounded-full shadow-2xl">
+                                            {fieldConfirmed.facePhoto ? 'Trocar Foto' : 'Ajustar & Salvar'}
+                                         </span>
+                                     </div>
                                 )}
                             </div>
                         </div>
@@ -491,20 +539,15 @@ const DocumentVerification: React.FC = () => {
                 <div key="view-biometry" className="space-y-12 animate-fade-in text-center">
                     <div className="space-y-10">
                         <div className="text-center">
-                            <label className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em] block mb-8 px-4">Biometria Facial de Segurança</label>
+                            <div className="flex justify-between items-center max-w-[400px] mx-auto mb-6 px-4">
+                                <label className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em]">Biometria Facial</label>
+                                {assets.selfieWithDoc && fieldConfirmed.selfieWithDoc && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100 shadow-sm">Pronto ✓</span>}
+                            </div>
+                            
                             <div className="relative group max-w-[400px] mx-auto">
-                                <div className={`aspect-[3/4] rounded-[64px] border-4 border-dashed flex flex-col items-center justify-center transition-all duration-500 overflow-hidden bg-slate-50 ${assets.selfieWithDoc ? 'border-green-500 shadow-2xl shadow-green-100' : 'border-slate-200 group-hover:border-blue-400'}`}>
+                                <div className={`aspect-[3/4] rounded-[64px] border-4 border-dashed flex flex-col items-center justify-center transition-all duration-500 overflow-hidden bg-slate-50 ${assets.selfieWithDoc && fieldConfirmed.selfieWithDoc ? 'border-green-500 shadow-2xl shadow-green-100' : 'border-slate-200 group-hover:border-blue-400'}`}>
                                     {assets.selfieWithDoc ? (
-                                        <>
-                                            <img src={assets.selfieWithDoc} className="w-full h-full object-cover" alt="Selfie ID" />
-                                            {!fieldConfirmed.selfieWithDoc && (
-                                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center rounded-[64px] z-40 p-12">
-                                                    <button onClick={() => setFieldConfirmed(p => ({...p, selfieWithDoc: true}))} className="w-full bg-green-500 text-white font-black text-xs uppercase py-6 rounded-[28px] shadow-2xl hover:scale-105 active:scale-95 transition tracking-widest border-2 border-white/20">
-                                                        Salvar Biometria ✓
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
+                                        <img src={assets.selfieWithDoc} className="w-full h-full object-cover" alt="Selfie ID" />
                                     ) : (
                                         <div className="text-center p-12">
                                             <div className="text-8xl mb-10 drop-shadow-xl animate-float">🤳</div>
@@ -514,10 +557,13 @@ const DocumentVerification: React.FC = () => {
                                     )}
                                 </div>
                                 <input type="file" accept="image/*" capture="user" onChange={e => handleFile(e, 'selfieWithDoc')} className="absolute inset-0 opacity-0 cursor-pointer z-20" title="Tirar selfie biometria" />
-                                {assets.selfieWithDoc && fieldConfirmed.selfieWithDoc && (
-                                    <div className="absolute top-10 right-10 bg-green-500 text-white p-4 rounded-full shadow-2xl z-30 pointer-events-none border-4 border-white">
-                                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
-                                    </div>
+                                
+                                {assets.selfieWithDoc && (
+                                     <div className={`absolute inset-0 bg-slate-900/40 rounded-[64px] ${fieldConfirmed.selfieWithDoc ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition flex items-center justify-center z-30 pointer-events-none`}>
+                                         <span className="text-white text-[10px] font-black uppercase tracking-widest bg-blue-600 px-6 py-3 rounded-full shadow-2xl">
+                                            {fieldConfirmed.selfieWithDoc ? 'Refazer Biometria' : 'Ajustar & Salvar'}
+                                         </span>
+                                     </div>
                                 )}
                             </div>
                         </div>
