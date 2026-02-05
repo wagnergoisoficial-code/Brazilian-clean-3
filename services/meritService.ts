@@ -1,5 +1,4 @@
-
-import { CleanerLevel, CleanerProfile, PointTransaction } from "../types";
+import { CleanerLevel, CleanerProfile, PointTransaction, CleanerStatus } from "../types";
 
 // Level Thresholds - GOVERNANCE RULES
 // Bronze: 0 - 299
@@ -55,8 +54,9 @@ export const addPoints = (cleaner: CleanerProfile, amount: number, reason: strin
 export const sortCleanersByMerit = (cleaners: CleanerProfile[]): CleanerProfile[] => {
     return [...cleaners].sort((a, b) => {
         // 1. Verified Status First (Absolute Requirement)
-        if (a.status === 'VERIFIED' && b.status !== 'VERIFIED') return -1;
-        if (a.status !== 'VERIFIED' && b.status === 'VERIFIED') return 1;
+        // Fix: Changed 'VERIFIED' to CleanerStatus.ACTIVE to match the enum type.
+        if (a.status === CleanerStatus.ACTIVE && b.status !== CleanerStatus.ACTIVE) return -1;
+        if (a.status !== CleanerStatus.ACTIVE && b.status === CleanerStatus.ACTIVE) return 1;
 
         // 2. Level Priority (Gold > Silver > Bronze)
         const levelScore = { [CleanerLevel.GOLD]: 3, [CleanerLevel.SILVER]: 2, [CleanerLevel.BRONZE]: 1 };

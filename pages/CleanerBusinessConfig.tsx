@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { CleanerStatus } from '../types';
 
 const CleanerBusinessConfig: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -35,7 +34,7 @@ const CleanerBusinessConfig: React.FC = () => {
             state: myProfile.state || ''
         }));
     } else {
-        navigate('/join');
+        navigate('/professional');
     }
   }, [myProfile, navigate]);
 
@@ -65,8 +64,7 @@ const CleanerBusinessConfig: React.FC = () => {
         address: formData.address,
         yearsExperience: formData.yearsExperience,
         city: formData.city,
-        state: formData.state,
-        status: CleanerStatus.SERVICES_PENDING 
+        state: formData.state
     });
 
     navigate(`/setup-services?id=${cleanerId}`);
@@ -80,6 +78,7 @@ const CleanerBusinessConfig: React.FC = () => {
                <div className="w-12 h-1 bg-green-500 rounded-full"></div>
                <div className="w-12 h-1 bg-green-500 mx-2 rounded-full"></div>
                <div className="w-12 h-1 bg-slate-700 rounded-full"></div>
+               <div className="w-12 h-1 bg-slate-700 mx-2 rounded-full"></div>
            </div>
            <h2 className="text-3xl font-black uppercase tracking-tighter">Dados Comerciais</h2>
            <p className="text-slate-400 mt-2">Formalize seu cadastro para operarmos com segurança.</p>
@@ -87,9 +86,8 @@ const CleanerBusinessConfig: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
           
-          {/* STEP 3: Company Type Selection */}
           <div className="space-y-4">
-              <label className="block text-xs font-black uppercase text-slate-400 tracking-widest">Tipo de Entidade (Step 3)</label>
+              <label className="block text-xs font-black uppercase text-slate-400 tracking-widest">Tipo de Operação</label>
               <div className="grid grid-cols-2 gap-4">
                   <button 
                       type="button" 
@@ -110,7 +108,6 @@ const CleanerBusinessConfig: React.FC = () => {
               </div>
           </div>
 
-          {/* STEP 4: Company Data */}
           <div className="bg-slate-50 p-6 rounded-3xl space-y-6 border border-slate-100">
              <div className="flex items-center gap-2 mb-2">
                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>

@@ -100,7 +100,7 @@ const VerifyEmail: React.FC = () => {
     if (isClientFlow) {
       navigate('/');
     } else {
-      navigate(`/dashboard`);
+      navigate(`/setup-business?id=${cleanerId}`);
     }
   };
 
@@ -114,15 +114,15 @@ const VerifyEmail: React.FC = () => {
                     <svg className="w-12 h-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                  </div>
                  <h2 className="text-3xl font-black text-gray-900 mb-2">
-                    {isClientFlow ? 'Verified!' : 'Ativado!'}
+                    {isClientFlow ? 'Verified!' : 'Verificado!'}
                  </h2>
                  <p className="text-gray-600 mb-8 leading-relaxed">
                     {isClientFlow 
                         ? 'Your request has been sent to our verified cleaners.' 
-                        : 'Conta verificada com sucesso. Acesse agora o seu painel profissional.'}
+                        : 'E-mail verificado. Vamos configurar seu perfil profissional.'}
                  </p>
                  <button onClick={handleNextAction} className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-black transition shadow-xl uppercase tracking-widest text-sm">
-                    {isClientFlow ? 'Back to Home' : 'Acessar meu Painel'}
+                    {isClientFlow ? 'Back to Home' : 'Iniciar Configuração'}
                  </button>
               </div>
           ) : (

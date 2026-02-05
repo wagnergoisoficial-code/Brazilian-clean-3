@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { CleanerStatus } from '../types';
 
 const RADIUS_OPTIONS = [
   { value: 5, label: '5 milhas', desc: 'Apenas vizinhança imediata' },
@@ -30,7 +29,7 @@ const CleanerServiceArea: React.FC = () => {
         setRadius(myProfile.serviceRadius || 10);
         setManualZips(myProfile.zipCodes || []);
     } else { 
-        navigate('/join'); 
+        navigate('/professional'); 
     }
   }, [myProfile, navigate]);
 
@@ -58,7 +57,6 @@ const CleanerServiceArea: React.FC = () => {
             baseZip: cleanBase,
             serviceRadius: radius,
             zipCodes: manualZips,
-            status: CleanerStatus.DOCUMENTS_PENDING
         });
         
         setIsSaving(false);
@@ -70,7 +68,6 @@ const CleanerServiceArea: React.FC = () => {
     <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans">
       <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in">
         
-        {/* Header Header */}
         <div className="bg-slate-900 py-10 px-8 text-center text-white">
            <div className="flex justify-center mb-4 gap-1">
                <div className="w-10 h-1 bg-green-500 rounded-full"></div>
@@ -84,7 +81,6 @@ const CleanerServiceArea: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="p-10 space-y-10">
           
-          {/* Section 1: Base ZIP */}
           <div className="space-y-4">
              <div className="flex items-center gap-2 mb-2">
                  <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">1</div>
@@ -101,7 +97,6 @@ const CleanerServiceArea: React.FC = () => {
              />
           </div>
 
-          {/* Section 2: Radius */}
           <div className="space-y-4">
              <div className="flex items-center gap-2 mb-2">
                  <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">2</div>
@@ -129,7 +124,6 @@ const CleanerServiceArea: React.FC = () => {
              </div>
           </div>
 
-          {/* Section 3: Manual Zips */}
           <div className="space-y-4 pt-4 border-t border-slate-100">
              <div className="flex items-center gap-2 mb-2">
                  <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">3</div>
@@ -166,7 +160,6 @@ const CleanerServiceArea: React.FC = () => {
              </div>
           </div>
 
-          {/* Action Button */}
           <button 
             type="submit" 
             disabled={isSaving}

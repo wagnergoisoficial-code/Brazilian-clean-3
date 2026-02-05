@@ -5,7 +5,6 @@ import { AppProvider, useAppContext } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import WhoWeAre from './pages/WhoWeAre';
-import CleanerSearch from './pages/CleanerSearch';
 import CleanerRegistration from './pages/CleanerRegistration';
 import AdminDashboard from './pages/AdminDashboard';
 import CleanerDashboard from './pages/CleanerDashboard';
@@ -34,7 +33,6 @@ const AppRoutes = () => {
         <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/who-we-are" element={<WhoWeAre />} />
-            <Route path="/find-a-cleaner" element={<CleanerSearch />} />
             <Route path="/express-match" element={<ExpressMatch />} />
             <Route path="/professional" element={<CleanerRegistration />} />
             <Route path="/support" element={<Support />} />

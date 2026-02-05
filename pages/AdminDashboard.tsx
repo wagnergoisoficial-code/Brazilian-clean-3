@@ -49,7 +49,7 @@ const AdminDashboard: React.FC = () => {
   const [userSearch, setUserSearch] = useState('');
 
   const stats = {
-    pending: cleaners.filter(c => c?.status === CleanerStatus.UNDER_REVIEW).length,
+    pending: cleaners.filter(c => c?.status === CleanerStatus.VERIFICATION_PENDING).length,
     leads: leads.filter(l => l?.status === 'OPEN').length,
     tickets: supportRequests.filter(r => r?.status === SupportStatus.NEW).length,
     teamCount: teamMembers.length
@@ -164,8 +164,8 @@ const AdminDashboard: React.FC = () => {
                              <td className="p-6"><VerificationBadge result={c.aiVerificationResult} /></td>
                              <td className="p-6">
                                 <div className="flex gap-2">
-                                    {c.status !== 'VERIFIED' && <button onClick={() => verifyCleaner(c.id, authenticatedAdminId!)} className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Aprovar</button>}
-                                    {c.status !== 'REJECTED' && <button onClick={() => rejectCleaner(c.id, authenticatedAdminId!)} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold">Reprovar</button>}
+                                    {c.status !== CleanerStatus.ACTIVE && <button onClick={() => verifyCleaner(c.id, authenticatedAdminId!)} className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Aprovar</button>}
+                                    {c.status !== CleanerStatus.REJECTED && <button onClick={() => rejectCleaner(c.id, authenticatedAdminId!)} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold">Reprovar</button>}
                                     <button onClick={() => deleteCleaner(c.id, authenticatedAdminId!)} className="text-slate-400 hover:text-red-500">🗑</button>
                                 </div>
                              </td>

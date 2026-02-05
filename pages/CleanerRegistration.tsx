@@ -22,11 +22,13 @@ const CleanerRegistration: React.FC = () => {
       const { status, id } = redirectTarget;
       const timer = setTimeout(() => {
           switch(status) {
-              case CleanerStatus.EMAIL_PENDING: navigate(`/verify?id=${id}`); break;
-              case CleanerStatus.BUSINESS_PENDING: navigate(`/setup-business?id=${id}`); break;
-              case CleanerStatus.SERVICES_PENDING: navigate(`/setup-services?id=${id}`); break;
-              case CleanerStatus.AREA_PENDING: navigate(`/setup-area?id=${id}`); break;
-              case CleanerStatus.DOCUMENTS_PENDING: navigate(`/verify-documents?id=${id}`); break;
+              case CleanerStatus.CREATED: navigate(`/verify?id=${id}`); break;
+              case CleanerStatus.EMAIL_VERIFIED: navigate(`/setup-business?id=${id}`); break;
+              // Fallback for older statuses for now
+              case 'BUSINESS_PENDING' as any: navigate(`/setup-business?id=${id}`); break;
+              case 'SERVICES_PENDING' as any: navigate(`/setup-services?id=${id}`); break;
+              case 'AREA_PENDING' as any: navigate(`/setup-area?id=${id}`); break;
+              case 'DOCUMENTS_PENDING' as any: navigate(`/verify-documents?id=${id}`); break;
               default: navigate('/dashboard');
           }
       }, 100);
@@ -77,7 +79,7 @@ const CleanerRegistration: React.FC = () => {
                 baseZip: formData.zipCode,
                 zipCodes: [formData.zipCode]
             });
-            setRedirectTarget({ status: CleanerStatus.EMAIL_PENDING, id });
+            setRedirectTarget({ status: CleanerStatus.CREATED, id });
         }
     } catch (err) {
         alert("Ocorreu um erro no sistema. Tente novamente.");

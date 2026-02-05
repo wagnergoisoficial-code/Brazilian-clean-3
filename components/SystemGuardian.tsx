@@ -11,13 +11,12 @@ interface State {
 }
 
 class SystemGuardian extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
+  // Fix: Initialize state as a class property instead of in the constructor
+  // This resolves type errors where `this.state` was not recognized.
+  state: State = {
+    hasError: false,
+    error: null,
+  };
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };

@@ -217,8 +217,6 @@ const DocumentVerification: React.FC = () => {
       selfieWithDoc: ''
   });
 
-  // CRITICAL: Persistent interaction tracking for fields
-  // A field is only "Confirmed" if it has been saved via the Image Editor.
   const [fieldConfirmed, setFieldConfirmed] = useState<Record<string, boolean>>({
       docFront: false,
       docBack: false,
@@ -227,9 +225,8 @@ const DocumentVerification: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!myProfile && !targetId) { navigate('/join'); }
+    if (!myProfile && !targetId) { navigate('/professional'); }
     if (myProfile) {
-        // Load existing assets if any
         setAssets({
             docFront: myProfile.documentFrontUrl || '',
             docBack: myProfile.documentBackUrl || '',
@@ -237,7 +234,6 @@ const DocumentVerification: React.FC = () => {
             selfieWithDoc: myProfile.selfieWithDocUrl || ''
         });
         
-        // If profile already has data, treat them as confirmed
         setFieldConfirmed({
             docFront: !!myProfile.documentFrontUrl,
             docBack: !!myProfile.documentBackUrl,
@@ -254,25 +250,20 @@ const DocumentVerification: React.FC = () => {
 
         const reader = new FileReader();
         reader.onload = () => {
-          // Immediately trigger the editor
           setTempImage(reader.result as string);
           setEditingField(field);
-          // We do NOT set the asset yet. User must confirm in editor.
         };
         reader.readAsDataURL(file);
         
-        // Reset input value to allow re-uploading same file if needed
         e.target.value = '';
     }
   };
 
   const onCropConfirm = (croppedBase64: string) => {
     if (editingField && targetId) { 
-        // 1. Update State
         setAssets(prev => ({ ...prev, [editingField]: croppedBase64 }));
         setFieldConfirmed(prev => ({ ...prev, [editingField]: true }));
         
-        // 2. Persist immediately to prevent data loss on crash/reload
         const updateObj: any = {};
         if (editingField === 'docFront') updateObj.documentFrontUrl = croppedBase64;
         if (editingField === 'docBack') updateObj.documentBackUrl = croppedBase64;
@@ -281,7 +272,6 @@ const DocumentVerification: React.FC = () => {
         
         updateCleanerProfile(targetId, updateObj);
     }
-    // 3. Close Editor
     setEditingField(null);
     setTempImage(null);
   };
@@ -297,7 +287,6 @@ const DocumentVerification: React.FC = () => {
   };
 
   const handleFinalSubmission = async () => {
-    // 1. Validate All Fields
     const allPresent = assets.docFront && assets.docBack && assets.facePhoto && assets.selfieWithDoc;
     const allConfirmed = fieldConfirmed.docFront && fieldConfirmed.docBack && fieldConfirmed.facePhoto && fieldConfirmed.selfieWithDoc;
     
@@ -309,38 +298,29 @@ const DocumentVerification: React.FC = () => {
     setVerificationFeedback(null);
     
     try {
-        // 2. Attempt AI Verification
-        // Note: verifyCleaner is NOT called here. This is purely for metadata/scoring.
-        // The actual status change happens if successful.
-        
         const aiResult = await performIdentityVerification(assets, { 
             fullName: myProfile.fullName, 
             email: myProfile.email 
         });
 
-        // 3. Handle Fraud Detection
         if (aiResult.verification_status === "LIKELY_FRAUD") {
             setVerificationFeedback(aiResult);
             setIsVerifying(false);
             return;
         }
 
-        // 4. Update Profile Status
         updateCleanerProfile(targetId, {
-            status: CleanerStatus.UNDER_REVIEW,
+            status: CleanerStatus.VERIFICATION_PENDING,
             aiVerificationResult: aiResult
         });
 
-        // 5. Navigate
         setTimeout(() => navigate('/dashboard'), 1000);
 
     } catch (err) {
         console.error("Verification Service Error:", err);
         
-        // FAIL-SAFE: If AI is down, do not block the user.
-        // Send to manual review queue.
         updateCleanerProfile(targetId, { 
-            status: CleanerStatus.UNDER_REVIEW,
+            status: CleanerStatus.VERIFICATION_PENDING,
             aiVerificationResult: {
                 verification_status: "NEEDS_MANUAL_REVIEW",
                 confidence_score: 0.0,
@@ -356,7 +336,6 @@ const DocumentVerification: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans overflow-x-hidden">
-      {/* OVERLAY EDITOR */}
       {editingField && tempImage && (
         <ImageEditor 
           key={`editor-overlay-${editingField}`}
@@ -429,7 +408,6 @@ const DocumentVerification: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                {/* Input covers entire area until confirmed. If confirmed, user must click 'Refazer' */}
                                 <input type="file" accept="image/*" onChange={e => handleFile(e, 'docFront')} className="absolute inset-0 opacity-0 cursor-pointer z-20" title="Upload frente" />
                                 
                                 {assets.docFront && (
@@ -445,7 +423,7 @@ const DocumentVerification: React.FC = () => {
                         {/* DOC BACK */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center px-1">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Verso do ID</label>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Verso do ID</label>
                                 {assets.docBack && fieldConfirmed.docBack && <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100">Confirmado ✓</span>}
                             </div>
                             <div className="relative group aspect-[3/2]">

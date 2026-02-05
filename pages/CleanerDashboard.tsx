@@ -3,13 +3,34 @@ import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { CleanerStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { canCleanerServeZip } from '../services/locationService';
 import LeadChat from '../components/LeadChat';
 
 type DashboardTab = 'overview' | 'leads' | 'my_jobs' | 'profile' | 'settings';
 
+const AvailabilityToggle: React.FC<{ isAvailable: boolean; onToggle: () => void }> = ({ isAvailable, onToggle }) => {
+  return (
+      <div className="flex items-center gap-4 bg-white p-3 pr-5 rounded-full shadow-md border border-slate-100">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isAvailable ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+              {isAvailable ? '⚡' : '🌙'}
+          </div>
+          <div>
+              <p className="font-black text-xs uppercase tracking-widest text-slate-900">
+                  {isAvailable ? 'Disponível para Leads' : 'Indisponível'}
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium">
+                  {isAvailable ? 'Você está na fila para receber novos contatos.' : 'Você não receberá novos contatos.'}
+              </p>
+          </div>
+          <button onClick={onToggle} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ml-auto ${isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+              <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${isAvailable ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+      </div>
+  );
+};
+
+
 const CleanerDashboard: React.FC = () => {
-  const { cleaners, authenticatedCleanerId, logout, leads, acceptLead } = useAppContext();
+  const { cleaners, authenticatedCleanerId, logout, leads, acceptLead, toggleAvailability, SERVICE_UI_MAP_EN } = useAppContext();
   const navigate = useNavigate();
   const myProfile = cleaners.find(c => c.id === authenticatedCleanerId);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
@@ -21,8 +42,8 @@ const CleanerDashboard: React.FC = () => {
 
   if (!myProfile) return null;
 
-  const isVerified = myProfile.status === CleanerStatus.VERIFIED;
-  const leadsInArea = isVerified ? leads.filter(l => l.status === 'OPEN' && canCleanerServeZip(myProfile, l.zipCode)) : [];
+  const isVerified = myProfile.status === CleanerStatus.ACTIVE;
+  const leadsInArea = isVerified ? leads.filter(l => l.status === 'OPEN' && l.broadcastToIds?.includes(myProfile.id)) : [];
   const myAcceptedLeads = leads.filter(l => l.acceptedByCleanerId === myProfile.id);
 
   return (
@@ -55,15 +76,15 @@ const CleanerDashboard: React.FC = () => {
       </aside>
 
       <main className="flex-1 p-6 md:p-12 overflow-y-auto">
-        <header className="mb-10 flex justify-between items-end">
+        <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
                 <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">
                     {activeTab === 'overview' ? 'Visão Geral' : activeTab === 'leads' ? 'Leads na Área' : 'Meus Contatos'}
                 </h2>
                 <p className="text-slate-500 font-medium">Acompanhe suas oportunidades em tempo real.</p>
             </div>
-            {activeTab === 'my_jobs' && openChatLeadId && (
-                <button onClick={() => setOpenChatLeadId(null)} className="text-blue-600 font-black text-[10px] uppercase tracking-widest hover:underline">Fechar Chat Ativo</button>
+            {activeTab === 'overview' && (
+              <AvailabilityToggle isAvailable={myProfile.isAvailable} onToggle={() => toggleAvailability(myProfile.id)} />
             )}
         </header>
 
@@ -87,7 +108,7 @@ const CleanerDashboard: React.FC = () => {
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">{lead.serviceType}</span>
+                                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">{SERVICE_UI_MAP_EN[lead.serviceType.toLowerCase().replace(/ /g, '_')] || lead.serviceType}</span>
                                     <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">ZIP {lead.zipCode}</span>
                                 </div>
                                 <h4 className="text-2xl font-black text-slate-900 mb-1">{lead.clientName}</h4>

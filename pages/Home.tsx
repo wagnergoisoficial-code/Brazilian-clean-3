@@ -1,18 +1,10 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 const Home: React.FC = () => {
-  const [zip, setZip] = useState('');
   const navigate = useNavigate();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (zip.length >= 5) {
-      navigate(`/find-a-cleaner?zip=${zip}`);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans overflow-x-hidden">
@@ -34,16 +26,13 @@ const Home: React.FC = () => {
           </div>
           <h1 className="text-6xl md:text-9xl font-black text-white tracking-tighter mb-4 leading-none drop-shadow-2xl">Brazilian Clean</h1>
           <p className="text-xl md:text-3xl font-bold text-[#FEDD00] tracking-tight mb-12 max-w-3xl mx-auto drop-shadow-lg">High Quality Professional Home Care</p>
-          <div className="max-w-2xl mx-auto animate-scale-in p-[2px] rounded-[34px] bg-us-br-bridge shadow-2xl">
-            <form onSubmit={handleSearch} className="group">
-              <div className="flex items-center bg-white rounded-[32px] p-2 md:p-4 transition-all duration-500 relative">
-                <div className="pl-4 md:pl-6 text-[#002868]">
-                  <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                </div>
-                <input type="text" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g,''))} maxLength={5} className="w-full py-4 md:py-6 pl-3 md:pl-5 pr-32 md:pr-40 bg-transparent text-xl md:text-2xl font-black outline-none text-slate-900 placeholder-slate-300 tracking-tight" placeholder="Enter ZIP code" />
-                <button type="submit" className="absolute right-4 top-4 bottom-4 bg-[#002868] text-white font-black px-6 md:px-10 rounded-[24px] transition-all shadow-xl hover:bg-[#BF0A30] active:scale-95 uppercase tracking-widest text-[10px] md:text-sm">Find Now</button>
-              </div>
-            </form>
+          <div className="max-w-md mx-auto animate-scale-in">
+            <button 
+              onClick={() => navigate('/express-match')} 
+              className="w-full bg-[#002868] text-white font-black px-10 py-6 rounded-full transition-all shadow-2xl hover:bg-[#BF0A30] active:scale-95 uppercase tracking-widest text-sm"
+            >
+              Request a Professional
+            </button>
           </div>
         </div>
       </section>

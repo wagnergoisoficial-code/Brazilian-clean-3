@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { CleanerStatus } from '../types';
 
 const SERVICES_LIST = [
   { key: 'residential_cleaning', label: 'Limpeza Residencial (Standard)', icon: '🏠' },
@@ -41,7 +40,7 @@ const CleanerServices: React.FC = () => {
     if (myProfile) {
         setSelectedKeys(myProfile.services || []);
     } else {
-        navigate('/join');
+        navigate('/professional');
     }
   }, [myProfile, navigate]);
 
@@ -57,10 +56,10 @@ const CleanerServices: React.FC = () => {
         alert("Por favor, selecione ao menos um serviço que você oferece.");
         return;
     }
+    if (!cleanerId) return;
 
-    updateCleanerProfile(cleanerId!, {
-        services: selectedKeys,
-        status: CleanerStatus.AREA_PENDING
+    updateCleanerProfile(cleanerId, {
+        services: selectedKeys
     });
 
     navigate(`/setup-area?id=${cleanerId}`);
@@ -73,8 +72,8 @@ const CleanerServices: React.FC = () => {
            <div className="flex justify-center mb-4">
                <div className="w-12 h-1 bg-green-500 rounded-full"></div>
                <div className="w-12 h-1 bg-green-500 mx-2 rounded-full"></div>
-               <div className="w-12 h-1 bg-green-500 mx-2 rounded-full"></div>
-               <div className="w-12 h-1 bg-slate-700 rounded-full"></div>
+               <div className="w-12 h-1 bg-green-500 rounded-full"></div>
+               <div className="w-12 h-1 bg-slate-700 mx-2 rounded-full"></div>
            </div>
            <h2 className="text-3xl font-black uppercase tracking-tighter">Serviços Oferecidos</h2>
            <p className="text-slate-400 mt-2">Selecione todos os serviços que você está disposta a realizar.</p>

@@ -13,13 +13,14 @@ export enum AdminRole {
 }
 
 export enum CleanerStatus {
-  EMAIL_PENDING = 'EMAIL_PENDING',
-  BUSINESS_PENDING = 'BUSINESS_PENDING',
-  SERVICES_PENDING = 'SERVICES_PENDING',
-  AREA_PENDING = 'AREA_PENDING',
-  DOCUMENTS_PENDING = 'DOCUMENTS_PENDING',
-  UNDER_REVIEW = 'UNDER_REVIEW',
-  VERIFIED = 'VERIFIED',
+  // Onboarding Flow
+  CREATED = 'CREATED',
+  EMAIL_VERIFIED = 'EMAIL_VERIFIED',
+  VERIFICATION_PENDING = 'VERIFICATION_PENDING',
+
+  // Operational Statuses
+  ACTIVE = 'ACTIVE',
+  LIMITED = 'LIMITED',
   REJECTED = 'REJECTED'
 }
 
@@ -71,7 +72,7 @@ export interface Lead {
   bedrooms: number;
   bathrooms: number;
   date: string;
-  status: 'OPEN' | 'ACCEPTED' | 'COMPLETED';
+  status: 'NEW' | 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'UNASSIGNED' | 'LOST' | 'CANCELLED';
   acceptedByCleanerId?: string;
   createdAt: number;
   broadcastToIds?: string[];
@@ -106,6 +107,7 @@ export interface CleanerProfile {
   
   // System Status
   status: CleanerStatus;
+  isAvailable: boolean;
   rating: number;
   reviewCount: number;
   joinedDate: string;

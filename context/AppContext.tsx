@@ -5,6 +5,8 @@ import {
   SupportRequest, SupportStatus, SupportType, TeamMember, AuditLog, EmailNotification
 } from '../types';
 import { translateChatMessage } from '../services/geminiService';
+import { canCleanerServeZip } from '../services/locationService';
+import { sortCleanersByMerit } from '../services/meritService';
 
 interface AppContextType {
   cleaners: CleanerProfile[];
@@ -30,6 +32,7 @@ interface AppContextType {
   logout: () => void;
   createLead: (lead: Partial<Lead>) => Promise<void>;
   acceptLead: (leadId: string, cleanerId: string) => void;
+  toggleAvailability: (cleanerId: string) => void;
   sendChatMessage: (roomId: string, message: string, senderRole: 'client' | 'cleaner') => Promise<void>;
   getRoomForLead: (leadId: string) => ChatRoom | undefined;
   getMessagesForRoom: (roomId: string) => ChatMessage[];
@@ -43,7 +46,6 @@ interface AppContextType {
   deleteCleaner: (id: string, adminId: string) => void;
   updateSupportStatus: (id: string, status: SupportStatus) => void;
   requestPasswordReset: (email: string) => Promise<void>;
-  searchCleaners: (zip: string, service?: string) => CleanerProfile[];
   [key: string]: any;
 }
 
@@ -150,7 +152,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       baseZip: data.baseZip || '',
       serviceRadius: 10,
       zipCodes: data.zipCodes || [],
-      status: CleanerStatus.EMAIL_PENDING,
+      status: CleanerStatus.CREATED,
+      isAvailable: true,
       rating: 5,
       reviewCount: 0,
       joinedDate: new Date().toISOString(),
@@ -191,7 +194,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const cleaner = cleaners.find(c => c.id === id);
     if (!cleaner) return { success: false, error: "Profissional não encontrado." };
     if (cleaner.verificationCode === code) {
-      updateCleanerProfile(id, { emailVerified: true, status: CleanerStatus.BUSINESS_PENDING });
+      updateCleanerProfile(id, { emailVerified: true, status: CleanerStatus.EMAIL_VERIFIED });
       return { success: true };
     }
     return { success: false, error: "Código incorreto." };
@@ -203,13 +206,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.removeItem('bc_auth_cleaner_id');
   };
 
+  const distributeLead = (lead: Lead) => {
+    const serviceKey = Object.keys(SERVICE_UI_MAP_EN).find(key => SERVICE_UI_MAP_EN[key] === lead.serviceType) || lead.serviceType;
+
+    const availableCleaners = cleaners.filter(c => 
+        c.status === CleanerStatus.ACTIVE &&
+        c.isAvailable === true &&
+        canCleanerServeZip(c, lead.zipCode) &&
+        c.services.includes(serviceKey)
+    );
+
+    const sortedCleaners = sortCleanersByMerit(availableCleaners);
+    const selectedCleaners = sortedCleaners.slice(0, 4);
+    const selectedIds = selectedCleaners.map(c => c.id);
+
+    setLeads(prev => prev.map(l => 
+        l.id === lead.id ? { ...l, status: 'OPEN', broadcastToIds: selectedIds } : l
+    ));
+
+    console.log(`Lead ${lead.id} for ${lead.serviceType} distributed to cleaners:`, selectedIds);
+  };
+
   const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
     let code = await dispatchEmail(l.clientEmail || '', 'en');
     if (!code) code = Math.floor(100000 + Math.random() * 900000).toString();
     
-    const newLead: Lead = { ...l, id, status: 'OPEN', createdAt: Date.now() } as Lead;
+    const newLead: Lead = { ...l, id, status: 'NEW', createdAt: Date.now() } as Lead;
     setLeads(prev => [newLead, ...prev]);
+
+    distributeLead(newLead);
 
     setPendingClientCode(code);
     setPendingClientEmail(l.clientEmail || '');
@@ -229,8 +255,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const acceptLead = (leadId: string, cleanerId: string) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? {...l, status: 'ACCEPTED', acceptedByCleanerId: cleanerId} : l));
-    setChatRooms(prev => prev.map(r => r.leadId === leadId ? {...r, cleanerId} : r));
+    const lead = leads.find(l => l.id === leadId);
+    if (lead && lead.status === 'OPEN') {
+      setLeads(prev => prev.map(l => l.id === leadId ? {...l, status: 'ASSIGNED', acceptedByCleanerId: cleanerId} : l));
+      setChatRooms(prev => prev.map(r => r.leadId === leadId ? {...r, cleanerId} : r));
+    }
+  };
+
+  const toggleAvailability = (cleanerId: string) => {
+    setCleaners(prev => prev.map(c => 
+      c.id === cleanerId ? { ...c, isAvailable: !c.isAvailable } : c
+    ));
   };
 
   const sendChatMessage = async (roomId: string, message: string, senderRole: 'client' | 'cleaner') => {
@@ -262,7 +297,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const verifyCleaner = (id: string, adminId: string) => {
-    updateCleanerProfile(id, { status: CleanerStatus.VERIFIED, isListed: true });
+    updateCleanerProfile(id, { status: CleanerStatus.ACTIVE, isListed: true });
     setAuditLogs(prev => [{ id: Math.random().toString(36).substr(2, 9), adminId, adminName: "Admin", action: "VERIFY_CLEANER", targetId: id, targetType: 'CLEANER', timestamp: new Date().toISOString(), details: "Documents verified manually" }, ...prev]);
   };
 
@@ -288,19 +323,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const searchCleaners = (zip: string, service?: string) => {
-    return cleaners.filter(c => {
-      if (c.status !== CleanerStatus.VERIFIED) return false;
-      const servesZip = c.zipCodes.includes(zip) || c.baseZip === zip;
-      if (!servesZip) return false;
-      if (service && !c.services.includes(service)) return false;
-      return true;
-    });
-  };
-
   const getRoomForLead = (leadId: string) => chatRooms.find(r => r.leadId === leadId);
   const getMessagesForRoom = (roomId: string) => chatMessages.filter(m => m.chatRoomId === roomId);
   const clearLastEmail = () => setLastEmail(null);
+
+  const SERVICE_UI_MAP_EN: Record<string, string> = {
+    'standard': 'Standard Clean',
+    'deep': 'Deep Clean',
+    'move': 'Move In/Out',
+    'post-construction': 'Post-Construction'
+  };
 
   return (
     <AppContext.Provider value={{ 
@@ -311,7 +343,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       acceptLead, sendChatMessage, getRoomForLead, getMessagesForRoom, updateCleanerProfile,
       verifyCleanerCode, resendCleanerCode, resendClientCode, createSupportRequest,
       verifyCleaner, rejectCleaner, deleteCleaner, updateSupportStatus, requestPasswordReset,
-      searchCleaners
+      toggleAvailability, SERVICE_UI_MAP_EN
     }}>
       {children}
     </AppContext.Provider>

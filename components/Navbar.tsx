@@ -37,7 +37,7 @@ const Navbar: React.FC = () => {
           <div className="hidden lg:flex items-center gap-x-8">
             <Link to="/" className={`text-xs font-bold uppercase tracking-widest transition-colors ${isActive('/') ? 'text-[#002868]' : 'text-slate-500 hover:text-[#002868]'}`}>Home</Link>
             <Link to="/who-we-are" className={`text-xs font-bold uppercase tracking-widest transition-colors ${isActive('/who-we-are') ? 'text-[#002868]' : 'text-slate-500 hover:text-[#002868]'}`}>Who We Are</Link>
-            <Link to="/find-a-cleaner" className={`text-xs font-bold uppercase tracking-widest transition-colors ${isActive('/find-a-cleaner') ? 'text-[#002868]' : 'text-slate-500 hover:text-[#002868]'}`}>Find a Cleaner</Link>
+            <Link to="/express-match" className={`text-xs font-bold uppercase tracking-widest transition-colors ${isActive('/express-match') ? 'text-[#002868]' : 'text-slate-500 hover:text-[#002868]'}`}>Find a Cleaner</Link>
             <Link to="/support" className={`text-xs font-bold uppercase tracking-widest transition-colors ${isActive('/support') ? 'text-[#002868]' : 'text-slate-500 hover:text-[#002868]'}`}>Support</Link>
           </div>
 
@@ -65,7 +65,7 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between gap-6 min-w-max mx-auto max-w-lg">
           <Link to="/" className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all px-2 py-1 rounded-md ${isActive('/') ? 'text-[#002868] bg-blue-50' : 'text-slate-400'}`}>Home</Link>
           <Link to="/who-we-are" className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all px-2 py-1 rounded-md ${isActive('/who-we-are') ? 'text-[#002868] bg-blue-50' : 'text-slate-400'}`}>Who We Are</Link>
-          <Link to="/find-a-cleaner" className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all px-2 py-1 rounded-md ${isActive('/find-a-cleaner') ? 'text-[#002868] bg-blue-50' : 'text-slate-400'}`}>Find a Cleaner</Link>
+          <Link to="/express-match" className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all px-2 py-1 rounded-md ${isActive('/express-match') ? 'text-[#002868] bg-blue-50' : 'text-slate-400'}`}>Find a Cleaner</Link>
           <Link to="/support" className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all px-2 py-1 rounded-md ${isActive('/support') ? 'text-[#002868] bg-blue-50' : 'text-slate-400'}`}>Support</Link>
         </div>
       </div>
