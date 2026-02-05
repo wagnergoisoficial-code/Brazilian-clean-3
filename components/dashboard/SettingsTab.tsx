@@ -82,6 +82,18 @@ const SettingsTab: React.FC<{ profile: CleanerProfile }> = ({ profile }) => {
                 </div>
             </div>
 
+            {/* Language Section Placeholder */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                <h4 className="text-lg font-bold mb-4">Idioma / Language</h4>
+                <p className="text-sm text-slate-500">A configuração de idioma será disponibilizada em breve.</p>
+            </div>
+
+            {/* Privacy Section Placeholder */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                <h4 className="text-lg font-bold mb-4">Privacidade</h4>
+                <p className="text-sm text-slate-500">Opções de gerenciamento de dados estarão disponíveis aqui.</p>
+            </div>
+
             {/* Danger Zone */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-red-200">
                 <h4 className="text-lg font-bold text-red-600">Zona de Perigo</h4>

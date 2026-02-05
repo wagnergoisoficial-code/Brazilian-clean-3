@@ -41,14 +41,21 @@ const AvailabilityToggle: React.FC<{ isAvailable: boolean; onToggle: () => void 
   );
 };
 
-const LeadCard: React.FC<{ lead: Lead; onAccept: (id: string) => void; myProfileId: string; onOpenChat: (id: string) => void; openChatLeadId: string | null; serviceMap: Record<string,string> }> = ({ lead, onAccept, myProfileId, onOpenChat, openChatLeadId, serviceMap }) => {
+const LeadCard: React.FC<{ lead: Lead; onAccept: (id: string) => void; onOpenChat: (id: string) => void; openChatLeadId: string | null; serviceMap: Record<string,string> }> = ({ lead, onAccept, onOpenChat, openChatLeadId, serviceMap }) => {
+  const { updateLead, updateLeadOutcome } = useAppContext();
   const [showNotes, setShowNotes] = useState(false);
-  const { updateLead } = useAppContext();
+  const [showHistory, setShowHistory] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const [notes, setNotes] = useState(lead.internalNotes || '');
 
   const handleSaveNotes = () => {
     updateLead(lead.id, { internalNotes: notes });
     setShowNotes(false);
+  }
+
+  const handleAction = (outcome: 'COMPLETED' | 'LOST') => {
+    updateLeadOutcome(lead.id, outcome);
+    setShowActions(false);
   }
 
   return (
@@ -59,6 +66,8 @@ const LeadCard: React.FC<{ lead: Lead; onAccept: (id: string) => void; myProfile
                     <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">{serviceMap[lead.serviceType.toLowerCase().replace(/ /g, '_')] || lead.serviceType}</span>
                     <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">ZIP {lead.zipCode}</span>
                     {lead.context?.origin && <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">{lead.context.origin}</span>}
+                    {lead.status === 'COMPLETED' && <span className="bg-green-100 text-green-800 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">✓ Fechado</span>}
+                    {lead.status === 'LOST' && <span className="bg-red-100 text-red-800 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">✕ Perdido</span>}
                 </div>
                 <h4 className="text-2xl font-black text-slate-900 mb-1">{lead.clientName}</h4>
                 <p className="text-slate-500 text-sm font-medium">Ambiente: {lead.bedrooms} quartos / {lead.bathrooms} banheiros</p>
@@ -80,9 +89,20 @@ const LeadCard: React.FC<{ lead: Lead; onAccept: (id: string) => void; myProfile
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                             {openChatLeadId === lead.id ? 'Fechar Chat' : 'Abrir Chat'}
                         </button>
-                        <button onClick={() => setShowNotes(!showNotes)} className="flex-1 md:flex-none bg-slate-100/50 text-slate-400 px-4 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all text-center" title="Notas Internas">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
-                        </button>
+                        <div className="relative">
+                            <button onClick={() => setShowActions(!showActions)} onBlur={() => setTimeout(() => setShowActions(false), 200)} className="flex-1 md:flex-none bg-blue-50 text-blue-600 px-4 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-100 transition-all text-center">Ações</button>
+                            {showActions && (
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-10 animate-fade-in text-sm font-bold">
+                                    <button onClick={() => { setShowNotes(!showNotes); setShowActions(false); }} className="block w-full text-left px-4 py-3 hover:bg-slate-50">Notas Internas</button>
+                                    <button onClick={() => { setShowHistory(!showHistory); setShowActions(false); }} className="block w-full text-left px-4 py-3 hover:bg-slate-50">Histórico</button>
+                                    {lead.status === 'ASSIGNED' && <>
+                                      <div className="h-px bg-slate-100 my-1"></div>
+                                      <button onClick={() => handleAction('COMPLETED')} className="block w-full text-left px-4 py-3 text-green-600 hover:bg-green-50">✓ Marcar como Fechado</button>
+                                      <button onClick={() => handleAction('LOST')} className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50">✕ Marcar como Perdido</button>
+                                    </>}
+                                </div>
+                            )}
+                        </div>
                     </>
                 )}
             </div>
@@ -96,6 +116,17 @@ const LeadCard: React.FC<{ lead: Lead; onAccept: (id: string) => void; myProfile
           </div>
         )}
         
+        {showHistory && (
+          <div className="border-t border-slate-100 pt-6 space-y-2 animate-fade-in">
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Histórico de Interações</label>
+             <ul className="text-xs text-slate-500 space-y-1">
+                {lead.history?.map(h => (
+                  <li key={h.timestamp}><strong>{new Date(h.timestamp).toLocaleString()}:</strong> {h.event}</li>
+                ))}
+             </ul>
+          </div>
+        )}
+
         {openChatLeadId === lead.id && (
           <div className="border-t border-slate-100 pt-8 animate-fade-in-up">
             <LeadChat leadId={lead.id} onClose={() => onOpenChat('')} />
@@ -107,7 +138,7 @@ const LeadCard: React.FC<{ lead: Lead; onAccept: (id: string) => void; myProfile
 
 
 const CleanerDashboard: React.FC = () => {
-  const { cleaners, authenticatedCleanerId, logout, leads, acceptLead, toggleAvailability, SERVICE_UI_MAP_EN, updateLead } = useAppContext();
+  const { cleaners, authenticatedCleanerId, logout, leads, acceptLead, toggleAvailability, SERVICE_UI_MAP_EN } = useAppContext();
   const navigate = useNavigate();
   const myProfile = cleaners.find(c => c.id === authenticatedCleanerId);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
@@ -167,7 +198,6 @@ const CleanerDashboard: React.FC = () => {
                           key={lead.id} 
                           lead={lead} 
                           onAccept={handleAcceptLead} 
-                          myProfileId={myProfile.id}
                           onOpenChat={handleOpenChat}
                           openChatLeadId={openChatLeadId}
                           serviceMap={SERVICE_UI_MAP_EN}

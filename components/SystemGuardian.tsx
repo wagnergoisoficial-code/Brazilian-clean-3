@@ -1,3 +1,4 @@
+
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
@@ -26,6 +27,17 @@ class SystemGuardian extends Component<Props, State> {
     console.error("CRITICAL UI CRASH:", error, errorInfo);
   }
 
+  handleHardReset = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch(e) {
+      console.error("Failed to clear storage during reset:", e);
+    } finally {
+      window.location.reload();
+    }
+  };
+
   render(): ReactNode {
     const { hasError, error } = this.state;
     const { children } = this.props;
@@ -44,8 +56,8 @@ class SystemGuardian extends Component<Props, State> {
                 {error?.name}: {error?.message || "Erro inesperado detectado."}
               </code>
             </div>
-            <button onClick={() => window.location.reload()} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
-              Tentar Novamente
+            <button onClick={this.handleHardReset} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
+              Reset & Reload
             </button>
           </div>
         </div>

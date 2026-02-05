@@ -46,6 +46,8 @@ interface AppContextType {
   deleteCleaner: (id: string, adminId: string) => void;
   updateSupportStatus: (id: string, status: SupportStatus) => void;
   requestPasswordReset: (email: string) => Promise<void>;
+  updateLeadOutcome: (leadId: string, outcome: 'COMPLETED' | 'LOST') => void;
+  deleteMyAccount: () => void;
   [key: string]: any;
 }
 
@@ -99,13 +101,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => { 
     if(isHydrated) {
-      localStorage.setItem('bc_cleaners', JSON.stringify(cleaners));
-      localStorage.setItem('bc_leads', JSON.stringify(leads));
-      localStorage.setItem('bc_chat_rooms', JSON.stringify(chatRooms));
-      localStorage.setItem('bc_chat_messages', JSON.stringify(chatMessages));
-      localStorage.setItem('bc_support', JSON.stringify(supportRequests));
-      localStorage.setItem('bc_team', JSON.stringify(teamMembers));
-      localStorage.setItem('bc_logs', JSON.stringify(auditLogs));
+      try {
+        // PRODUCTION-FIX: Added specific try/catch for QuotaExceededError.
+        // The primary fix is to NOT store large payloads, but this acts as a critical safety net.
+        localStorage.setItem('bc_cleaners', JSON.stringify(cleaners));
+        localStorage.setItem('bc_leads', JSON.stringify(leads));
+        localStorage.setItem('bc_chat_rooms', JSON.stringify(chatRooms));
+        localStorage.setItem('bc_chat_messages', JSON.stringify(chatMessages));
+        localStorage.setItem('bc_support', JSON.stringify(supportRequests));
+        localStorage.setItem('bc_team', JSON.stringify(teamMembers));
+        localStorage.setItem('bc_logs', JSON.stringify(auditLogs));
+      } catch(e: any) {
+         if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+            console.error("[CRITICAL] QuotaExceededError: LocalStorage is full. The application state could not be persisted. This may lead to data loss on refresh.");
+            // In a real app, we might trigger a notification to the user or a logging service.
+         } else {
+            console.error("[CRITICAL] Failed to write to LocalStorage:", e);
+         }
+      }
     }
   }, [cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs, isHydrated]);
 
@@ -232,7 +245,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let code = await dispatchEmail(l.clientEmail || '', 'en');
     if (!code) code = Math.floor(100000 + Math.random() * 900000).toString();
     
-    const newLead: Lead = { ...l, id, status: 'NEW', createdAt: Date.now() } as Lead;
+    const newLead: Lead = { ...l, id, status: 'NEW', createdAt: Date.now(), history: [{timestamp: Date.now(), event: 'Lead Created'}] } as Lead;
     setLeads(prev => [newLead, ...prev]);
 
     distributeLead(newLead);
@@ -257,11 +270,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const acceptLead = (leadId: string, cleanerId: string) => {
     const lead = leads.find(l => l.id === leadId);
     if (lead && lead.status === 'OPEN') {
-      setLeads(prev => prev.map(l => l.id === leadId ? {...l, status: 'ASSIGNED', acceptedByCleanerId: cleanerId} : l));
+      setLeads(prev => prev.map(l => l.id === leadId ? {
+        ...l, 
+        status: 'ASSIGNED', 
+        acceptedByCleanerId: cleanerId,
+        history: [...(l.history || []), { timestamp: Date.now(), event: 'Lead Accepted by Professional' }]
+      } : l));
       setChatRooms(prev => prev.map(r => r.leadId === leadId ? {...r, cleanerId} : r));
     }
   };
 
+  const updateLeadOutcome = (leadId: string, outcome: 'COMPLETED' | 'LOST') => {
+    setLeads(prev => prev.map(l => {
+      if (l.id === leadId) {
+        const eventText = outcome === 'COMPLETED' ? 'Job Marked as Won' : 'Job Marked as Lost';
+        return {
+          ...l,
+          status: outcome,
+          completedAt: outcome === 'COMPLETED' ? Date.now() : l.completedAt,
+          history: [...(l.history || []), { timestamp: Date.now(), event: eventText }]
+        };
+      }
+      return l;
+    }));
+  };
+  
   const toggleAvailability = (cleanerId: string) => {
     setCleaners(prev => prev.map(c => 
       c.id === cleanerId ? { ...c, isAvailable: !c.isAvailable } : c
@@ -306,6 +339,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const requestPasswordReset = async (email: string) => console.log("Password reset requested for", email);
 
+  const deleteMyAccount = () => {
+    if (authenticatedCleanerId) {
+      setCleaners(prev => prev.filter(c => c.id !== authenticatedCleanerId));
+      logout();
+    }
+  };
+
   const resendCleanerCode = async (id: string) => {
     const cleaner = cleaners.find(c => c.id === id);
     if (cleaner) {
@@ -343,7 +383,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       acceptLead, sendChatMessage, getRoomForLead, getMessagesForRoom, updateCleanerProfile,
       verifyCleanerCode, resendCleanerCode, resendClientCode, createSupportRequest,
       verifyCleaner, rejectCleaner, deleteCleaner, updateSupportStatus, requestPasswordReset,
-      toggleAvailability, SERVICE_UI_MAP_EN
+      toggleAvailability, SERVICE_UI_MAP_EN, updateLeadOutcome, deleteMyAccount
     }}>
       {children}
     </AppContext.Provider>
