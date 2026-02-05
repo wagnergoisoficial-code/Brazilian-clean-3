@@ -75,11 +75,17 @@ export interface Lead {
   status: 'NEW' | 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'UNASSIGNED' | 'LOST' | 'CANCELLED';
   acceptedByCleanerId?: string;
   createdAt: number;
+  completedAt?: number;
   broadcastToIds?: string[];
   context?: {
     viewedPortfolio?: boolean;
     portfolioCount?: number;
+    origin?: 'Express Match' | 'Direct Search';
   };
+  estimatedValue?: number;
+  internalNotes?: string;
+  review?: { rating: number; comment: string; };
+  history?: { timestamp: number; event: string; note?: string }[];
 }
 
 export interface CleanerProfile {
@@ -137,6 +143,10 @@ export interface CleanerProfile {
   level: CleanerLevel;
   pointHistory: PointTransaction[];
   notificationCount?: number;
+  notificationSettings?: {
+    newLeads: boolean;
+    newMessages: boolean;
+  };
 }
 
 export enum CleanerLevel {

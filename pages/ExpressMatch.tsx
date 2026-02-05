@@ -33,8 +33,16 @@ const ExpressMatch: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     
+    // Simulate a price for the financial dashboard
+    const basePrice = formData.serviceType === 'Deep Clean' ? 150 : 80;
+    const estimatedValue = basePrice + (formData.bedrooms * 20) + (formData.bathrooms * 15);
+
     try {
-      await createLead(formData);
+      await createLead({
+        ...formData,
+        estimatedValue,
+        context: { origin: 'Express Match' }
+      });
       setStep(4);
     } catch (err: any) {
       console.error("Submission error:", err);
