@@ -2,7 +2,7 @@
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
-interface Props {
+interface SystemGuardianProps {
   children?: ReactNode;
 }
 
@@ -11,9 +11,8 @@ interface State {
   error: Error | null;
 }
 
-class SystemGuardian extends Component<Props, State> {
-  // Fix: Initialize state as a class property instead of in the constructor
-  // This resolves type errors where `this.state` was not recognized.
+// Fix: Changed interface name to SystemGuardianProps and ensured correct inheritance from React.Component.
+class SystemGuardian extends Component<SystemGuardianProps, State> {
   state: State = {
     hasError: false,
     error: null,
@@ -40,6 +39,7 @@ class SystemGuardian extends Component<Props, State> {
 
   render(): ReactNode {
     const { hasError, error } = this.state;
+    // Fix: Accessing children via this.props which is correctly typed via Component<SystemGuardianProps, State>.
     const { children } = this.props;
 
     if (hasError) {

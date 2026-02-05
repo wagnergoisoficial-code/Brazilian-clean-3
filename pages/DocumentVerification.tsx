@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-// FIX: Imported CleanerProfile to resolve type error.
 import { CleanerStatus, AiVerificationResult, CleanerProfile } from '../types';
 import { performIdentityVerification } from '../services/geminiService';
 import { uploadDocument, cleanupStorageUrl } from '../services/storageService';
@@ -225,22 +224,20 @@ const DocumentVerification: React.FC = () => {
       docFront: 'idle', docBack: 'idle', facePhoto: 'idle', selfieWithDoc: 'idle'
   });
 
-  // PRODUCTION-FIX: Safely handle blob URL cleanup to prevent crashes.
-  // This ref keeps track of the current URLs.
   const assetUrlsRef = useRef(assetUrls);
   assetUrlsRef.current = assetUrls;
 
-  // This effect will ONLY run when the component unmounts.
   useEffect(() => {
     return () => {
-      // On unmount, get the latest URLs from the ref and clean them all up.
       const urlsToClean = Object.values(assetUrlsRef.current);
-      urlsToClean.forEach(url => {
-        if (url && url.startsWith('blob:')) cleanupStorageUrl(url);
+      // Fix: Cast each value to string to resolve unknown type error on line 239.
+      urlsToClean.forEach((url: any) => {
+        if (url && typeof url === 'string' && url.startsWith('blob:')) {
+            cleanupStorageUrl(url);
+        }
       });
-      console.log("[System] DocumentVerification unmounted. All blob URLs revoked.", urlsToClean);
     };
-  }, []); // Empty dependency array is crucial for this to run only on unmount.
+  }, []); 
   
   useEffect(() => {
     if (!myProfile && !targetId) { navigate('/professional'); }
@@ -285,10 +282,6 @@ const DocumentVerification: React.FC = () => {
     try {
         const fileUrl = await uploadDocument(croppedBase64);
         
-        // CRITICAL FIX: The immediate cleanup of the old URL was removed from here.
-        // It created a race condition with React's render cycle, causing the 'removeChild' crash.
-        // Cleanup is now handled safely by the component's unmount effect.
-        
         setAssetUrls(prev => ({ ...prev, [fieldToUpdate]: fileUrl }));
         setUploadStatus(prev => ({ ...prev, [fieldToUpdate]: 'success' }));
         
@@ -324,7 +317,6 @@ const DocumentVerification: React.FC = () => {
         return alert("Incompleto. Certifique-se de que todos os 4 documentos foram enviados com sucesso.");
     }
     setIsVerifying(true);
-    console.log("Submitting asset URLs for verification:", assetUrls);
     updateCleanerProfile(targetId, { status: CleanerStatus.VERIFICATION_PENDING });
     setTimeout(() => navigate('/dashboard'), 1500);
   };
