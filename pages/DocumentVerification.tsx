@@ -236,7 +236,7 @@ const DocumentVerification: React.FC = () => {
       // On unmount, get the latest URLs from the ref and clean them all up.
       const urlsToClean = Object.values(assetUrlsRef.current);
       urlsToClean.forEach(url => {
-        if (url) cleanupStorageUrl(url);
+        if (url && url.startsWith('blob:')) cleanupStorageUrl(url);
       });
       console.log("[System] DocumentVerification unmounted. All blob URLs revoked.", urlsToClean);
     };
@@ -285,11 +285,9 @@ const DocumentVerification: React.FC = () => {
     try {
         const fileUrl = await uploadDocument(croppedBase64);
         
-        // Clean up the *previous* blob URL for this specific field to prevent memory leaks.
-        const oldUrl = assetUrls[fieldToUpdate];
-        if (oldUrl && oldUrl.startsWith('blob:')) {
-            cleanupStorageUrl(oldUrl);
-        }
+        // CRITICAL FIX: The immediate cleanup of the old URL was removed from here.
+        // It created a race condition with React's render cycle, causing the 'removeChild' crash.
+        // Cleanup is now handled safely by the component's unmount effect.
         
         setAssetUrls(prev => ({ ...prev, [fieldToUpdate]: fileUrl }));
         setUploadStatus(prev => ({ ...prev, [fieldToUpdate]: 'success' }));
