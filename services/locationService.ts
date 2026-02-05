@@ -1,38 +1,24 @@
 
-/**
- * BRAZILIAN CLEAN - LOCATION ENGINE
- * =================================
- * Handles ZIP code matching and distance heuristics.
- */
-
-/**
- * Normalizes any string to a standard 5-digit ZIP format.
- * Trims whitespace, removes non-digits, and ensures padding.
- */
 export const normalizeZip = (zip: string): string => {
   const digits = zip.trim().replace(/\D/g, '');
   return digits.padStart(5, '0').substring(0, 5);
 };
 
-// Heuristic: ZIP codes with same prefix are often within a certain radius.
-// Real production would use a coordinate database or Google Distance Matrix API.
 export const isZipInRange = (clientZip: string, cleanerBaseZip: string, radiusMiles: number): boolean => {
   const cz = normalizeZip(clientZip);
   const bz = normalizeZip(cleanerBaseZip);
 
   if (cz === bz) return true;
 
-  // Prefix matching as a smart fallback for frontend demo
-  // Same first 3 digits: roughly same county/region (usually 10-15 miles)
+  // Simple heuristic: Same prefix (first 3 digits) usually implies proximity (10-15 miles)
   const czPrefix = cz.substring(0, 3);
   const bzPrefix = bz.substring(0, 3);
 
   if (czPrefix === bzPrefix) {
-    // If they share 3 digits, we consider them within 15 miles
     return radiusMiles >= 15;
   }
 
-  // Same first 2 digits: roughly same area of state (usually 25+ miles)
+  // Wider heuristic: Same region (first 2 digits) implies larger radius (25+ miles)
   const czWidePrefix = cz.substring(0, 2);
   const bzWidePrefix = bz.substring(0, 2);
   if (czWidePrefix === bzWidePrefix) {
@@ -49,11 +35,11 @@ export const canCleanerServeZip = (cleaner: {
 }, targetZip: string): boolean => {
   const cz = normalizeZip(targetZip);
   
-  // 1. Check manual list (Normalized)
+  // 1. Check manual list
   const normalizedManualZips = (cleaner.zipCodes || []).map(normalizeZip);
   if (normalizedManualZips.includes(cz)) return true;
 
-  // 2. Check radius from base ZIP
+  // 2. Check radius
   if (cleaner.baseZip) {
     return isZipInRange(cz, cleaner.baseZip, cleaner.serviceRadius);
   }

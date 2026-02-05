@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { CleanerStatus } from '../types';
 
 const CleanerRegistration: React.FC = () => {
-  const { registerCleaner, loginCleaner, requestPasswordReset, authenticatedCleanerId, cleaners } = useAppContext();
+  const { registerCleaner, loginCleaner, requestPasswordReset, authenticatedCleanerId } = useAppContext();
   const navigate = useNavigate();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,9 +16,6 @@ const CleanerRegistration: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '', email: '', password: '', phone: '', city: '', state: '', zipCode: ''
   });
-
-  // NORMALIZATION: Professionals are no longer forced to dashboard on mount.
-  // This allows the /professional page to act as a proper institutional/auth hub.
 
   useEffect(() => {
     if (redirectTarget) {
@@ -92,11 +89,10 @@ const CleanerRegistration: React.FC = () => {
     <div className="min-h-screen bg-teal-50 py-12 lg:py-24 px-4 flex items-center justify-center font-sans overflow-x-hidden">
       <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
         
-        {/* LEFT COLUMN: BRAZILIAN PRIDE */}
+        {/* LEFT COLUMN: BRANDING */}
         <div className="hidden lg:block animate-fade-in">
            <div className="relative">
               <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-[#009739] rounded-full blur-[100px] opacity-20"></div>
-              
               <div className="relative z-10 w-full aspect-[4/5] bg-white rounded-[3.5rem] overflow-hidden shadow-2xl border-[16px] border-white">
                   <img 
                     src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=1200" 
@@ -159,7 +155,7 @@ const CleanerRegistration: React.FC = () => {
                             <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Senha</label>
                             <div className="relative">
                                 <input required type={showPassword ? "text" : "password"} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl p-4 pr-12 outline-none focus:border-[#009739] transition-colors font-bold" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition p-1">
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition p-1" title={showPassword ? "Ocultar" : "Mostrar"}>
                                     {showPassword ? (
                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
                                     ) : (

@@ -19,47 +19,33 @@ import CleanerBusinessConfig from './pages/CleanerBusinessConfig';
 import CleanerServices from './pages/CleanerServices';
 import CleanerServiceArea from './pages/CleanerServiceArea';
 import DocumentVerification from './pages/DocumentVerification';
-import ClientSettings from './pages/ClientSettings';
 import { UserRole } from './types';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement, allowedRole: UserRole }> = ({ children, allowedRole }) => {
     const { userRole, authenticatedCleanerId, isHydrated } = useAppContext();
-    
     if (!isHydrated) return null;
-    
-    // Auth enforcement for private areas
     if (allowedRole === UserRole.CLEANER && !authenticatedCleanerId) return <Navigate to="/professional" replace />;
     if (userRole !== allowedRole) return <Navigate to="/" replace />;
-
     return children;
 };
 
 const AppRoutes = () => {
     return (
         <Routes>
-            {/* NORMALIZED PUBLIC ROUTES */}
             <Route path="/" element={<Home />} />
             <Route path="/who-we-are" element={<WhoWeAre />} />
             <Route path="/find-a-cleaner" element={<CleanerSearch />} />
             <Route path="/express-match" element={<ExpressMatch />} />
             <Route path="/professional" element={<CleanerRegistration />} />
             <Route path="/support" element={<Support />} />
-            
-            {/* UTILITY ROUTES */}
             <Route path="/verify" element={<VerifyEmail />} />
-            
-            {/* CLEANER JOURNEY (Isolated & Instructional) */}
             <Route path="/setup-personal" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerPersonalInfo /></ProtectedRoute>} />
             <Route path="/setup-business" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerBusinessConfig /></ProtectedRoute>} />
             <Route path="/setup-services" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerServices /></ProtectedRoute>} />
             <Route path="/setup-area" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerServiceArea /></ProtectedRoute>} />
             <Route path="/verify-documents" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><DocumentVerification /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute allowedRole={UserRole.CLEANER}><CleanerDashboard /></ProtectedRoute>} />
-            
-            {/* ADMIN CONSOLE (Total Control) */}
             <Route path="/admin" element={<ProtectedRoute allowedRole={UserRole.ADMIN}><AdminDashboard /></ProtectedRoute>} />
-
-            {/* FALLBACK */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );

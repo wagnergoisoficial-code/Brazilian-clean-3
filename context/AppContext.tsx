@@ -5,7 +5,6 @@ import {
   SupportRequest, SupportStatus, SupportType, TeamMember, AuditLog, EmailNotification
 } from '../types';
 import { translateChatMessage } from '../services/geminiService';
-import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface AppContextType {
   cleaners: CleanerProfile[];
@@ -44,6 +43,7 @@ interface AppContextType {
   deleteCleaner: (id: string, adminId: string) => void;
   updateSupportStatus: (id: string, status: SupportStatus) => void;
   requestPasswordReset: (email: string) => Promise<void>;
+  searchCleaners: (zip: string, service?: string) => CleanerProfile[];
   [key: string]: any;
 }
 
@@ -107,10 +107,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs, isHydrated]);
 
-  /**
-   * PRODUCTION DISPATCHER
-   * Calls the Netlify function to send real emails.
-   */
   const dispatchEmail = async (to: string, language: 'en' | 'pt'): Promise<string | null> => {
     try {
       const response = await fetch('/.netlify/functions/sendVerificationEmail', {
@@ -118,14 +114,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, language })
       });
-      
       const data = await response.json();
-      if (data.success && data.code) {
-        return data.code;
-      }
+      if (data.success && data.code) return data.code;
       return null;
     } catch (err) {
-      console.error("Critical Mail Dispatch Error:", err);
+      console.error("Mail Dispatch Error:", err);
       return null;
     }
   };
@@ -143,14 +136,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    
-    // Attempt real email dispatch first in production
     let code = await dispatchEmail(data.email || '', 'pt');
-    
-    // Fallback if API fails or in dev
-    if (!code) {
-      code = Math.floor(100000 + Math.random() * 900000).toString();
-    }
+    if (!code) code = Math.floor(100000 + Math.random() * 900000).toString();
     
     const newCleaner: CleanerProfile = {
       id,
@@ -193,11 +180,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setLastEmail({
       to: newCleaner.email,
       subject: "Seu código de verificação",
-      body: `Olá! Seu código para ativar sua conta é: ${code}`,
+      body: `Olá! Seu código é: ${code}`,
       actionLink: `/verify?id=${id}&code=${code}`,
       actionText: "Verificar Conta"
     });
-
     return id;
   };
 
@@ -219,14 +205,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
-    
-    // Dispatch real email to American client
     let code = await dispatchEmail(l.clientEmail || '', 'en');
-    
-    // Fallback for non-production or if dispatch fails
-    if (!code) {
-        code = Math.floor(100000 + Math.random() * 900000).toString();
-    }
+    if (!code) code = Math.floor(100000 + Math.random() * 900000).toString();
     
     const newLead: Lead = { ...l, id, status: 'OPEN', createdAt: Date.now() } as Lead;
     setLeads(prev => [newLead, ...prev]);
@@ -236,13 +216,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPendingClientCodeExpires(Date.now() + 600000);
 
     const roomId = `room_${id}`;
-    const newRoom: ChatRoom = {
-      id: roomId,
-      leadId: id,
-      clientId: 'anonymous_client',
-      cleanerId: '',
-      createdAt: Date.now()
-    };
+    const newRoom: ChatRoom = { id: roomId, leadId: id, clientId: 'anonymous_client', cleanerId: '', createdAt: Date.now() };
     setChatRooms(prev => [...prev, newRoom]);
 
     setLastEmail({
@@ -261,7 +235,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const sendChatMessage = async (roomId: string, message: string, senderRole: 'client' | 'cleaner') => {
     const { translatedText, sourceLang, targetLang } = await translateChatMessage(message, senderRole);
-
     const newMessage: ChatMessage = {
       id: Math.random().toString(36).substr(2, 9),
       chatRoomId: roomId,
@@ -272,17 +245,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       languageTarget: targetLang,
       createdAt: Date.now()
     };
-
     setChatMessages(prev => [...prev, newMessage]);
   };
 
   const createSupportRequest = (req: Partial<SupportRequest>) => {
-    const newReq: SupportRequest = {
-      ...req,
-      id: Math.random().toString(36).substr(2, 9),
-      status: SupportStatus.NEW,
-      createdAt: new Date().toISOString()
-    } as SupportRequest;
+    const newReq = { ...req, id: Math.random().toString(36).substr(2, 9), status: SupportStatus.NEW, createdAt: new Date().toISOString() } as SupportRequest;
     setSupportRequests(prev => [newReq, ...prev]);
   };
 
@@ -296,60 +263,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const verifyCleaner = (id: string, adminId: string) => {
     updateCleanerProfile(id, { status: CleanerStatus.VERIFIED, isListed: true });
-    setAuditLogs(prev => [{
-      id: Math.random().toString(36).substr(2, 9),
-      adminId,
-      adminName: "Admin",
-      action: "VERIFY_CLEANER",
-      targetId: id,
-      targetType: 'CLEANER',
-      timestamp: new Date().toISOString(),
-      details: "Documents verified manually"
-    }, ...prev]);
+    setAuditLogs(prev => [{ id: Math.random().toString(36).substr(2, 9), adminId, adminName: "Admin", action: "VERIFY_CLEANER", targetId: id, targetType: 'CLEANER', timestamp: new Date().toISOString(), details: "Documents verified manually" }, ...prev]);
   };
 
-  const rejectCleaner = (id: string, adminId: string) => {
-    updateCleanerProfile(id, { status: CleanerStatus.REJECTED });
-  };
-
-  const deleteCleaner = (id: string, adminId: string) => {
-    setCleaners(prev => prev.filter(c => c.id !== id));
-  };
-
-  const requestPasswordReset = async (email: string) => {
-    console.log("Password reset requested for", email);
-  };
+  const rejectCleaner = (id: string, adminId: string) => updateCleanerProfile(id, { status: CleanerStatus.REJECTED });
+  const deleteCleaner = (id: string, adminId: string) => setCleaners(prev => prev.filter(c => c.id !== id));
+  
+  const requestPasswordReset = async (email: string) => console.log("Password reset requested for", email);
 
   const resendCleanerCode = async (id: string) => {
     const cleaner = cleaners.find(c => c.id === id);
     if (cleaner) {
       const code = await dispatchEmail(cleaner.email, 'pt');
-      if (code) {
-          updateCleanerProfile(id, { verificationCode: code });
-      }
-      setLastEmail({
-        to: cleaner.email,
-        subject: "Seu novo código",
-        body: `Seu novo código é: ${code || cleaner.verificationCode}`,
-        actionLink: `/verify?id=${id}`,
-        actionText: "Verificar"
-      });
+      if (code) updateCleanerProfile(id, { verificationCode: code });
+      setLastEmail({ to: cleaner.email, subject: "Seu novo código", body: `Seu novo código é: ${code || cleaner.verificationCode}`, actionLink: `/verify?id=${id}`, actionText: "Verificar" });
     }
   };
 
   const resendClientCode = async () => {
     if (pendingClientEmail) {
       const code = await dispatchEmail(pendingClientEmail, 'en');
-      if (code) {
-          setPendingClientCode(code);
-      }
-      setLastEmail({
-        to: pendingClientEmail,
-        subject: "New verification code",
-        body: `Your new code is: ${code || pendingClientCode}`,
-        actionLink: `/verify?type=client`,
-        actionText: "Verify"
-      });
+      if (code) setPendingClientCode(code);
+      setLastEmail({ to: pendingClientEmail, subject: "New verification code", body: `Your new code is: ${code || pendingClientCode}`, actionLink: `/verify?type=client`, actionText: "Verify" });
     }
   };
 

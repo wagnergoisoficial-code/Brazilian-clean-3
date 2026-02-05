@@ -34,7 +34,6 @@ export enum SupportType {
   CLEANER = 'CLEANER'
 }
 
-// --- AI & VERIFICATION ---
 export interface AiVerificationResult {
   verification_status: "LIKELY_VALID" | "NEEDS_MANUAL_REVIEW" | "LIKELY_FRAUD";
   confidence_score: number;
@@ -43,7 +42,6 @@ export interface AiVerificationResult {
   user_instruction_pt?: string;
 }
 
-// --- CHAT SYSTEM INTERFACES ---
 export interface ChatRoom {
   id: string;
   leadId: string;
@@ -89,16 +87,24 @@ export interface CleanerProfile {
   phone: string;
   email: string;
   password?: string;
+  
+  // Location & Business
   city: string;
   state: string;
+  address?: string; // Added per schema
   companyName: string;
-  isCompany: boolean;
+  isCompany: boolean; // Individual vs LLC
+  ein?: string; // Added per schema (LLC only)
   yearsExperience: number;
-  services: string[];
   baseZip: string;
   serviceRadius: number;
   zipCodes: string[];
+  
+  // Service Details
+  services: string[];
   description: string;
+  
+  // System Status
   status: CleanerStatus;
   rating: number;
   reviewCount: number;
@@ -106,16 +112,24 @@ export interface CleanerProfile {
   emailVerified: boolean;
   verificationCode?: string;
   verificationCodeExpires?: number;
+  
+  // Media / Assets
   photoUrl: string;
   galleryUrls: string[];
   portfolio: PortfolioItem[];
+  
+  // Flags
   isListed: boolean;
   profileCompleted: boolean;
+  
+  // KYC
   documentFrontUrl?: string;
   documentBackUrl?: string;
   facePhotoUrl?: string;
   selfieWithDocUrl?: string;
   aiVerificationResult?: AiVerificationResult;
+  
+  // Gamification & Billing
   subscription?: Subscription;
   points: number;
   level: CleanerLevel;
@@ -170,17 +184,6 @@ export interface AuditLog {
   details: string;
 }
 
-export interface BonusCampaign {
-  id: string;
-  title: string;
-  description: string;
-  pointsReward: number;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  type: 'MANUAL' | 'LEAD_ACCEPT' | 'JOB_COMPLETE' | 'REVIEW_5_STAR';
-}
-
 export interface SupportRequest {
   id: string;
   type: SupportType;
@@ -204,18 +207,6 @@ export interface TeamMember {
   permissions: any;
 }
 
-export interface TeamInvite {
-  id: string;
-  email: string;
-  fullName: string;
-  role: AdminRole;
-  token: string;
-  expiresAt: number;
-  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED';
-  permissions: any;
-}
-
-// --- SUBSCRIPTION & PAYMENT ---
 export enum PaymentMethodType {
   CREDIT_CARD = 'CREDIT_CARD',
   PIX = 'PIX',

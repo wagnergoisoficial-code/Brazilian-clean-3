@@ -1,5 +1,4 @@
-
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
 interface Props {
@@ -11,15 +10,14 @@ interface State {
   error: Error | null;
 }
 
-/**
- * SystemGuardian component that acts as a top-level error boundary.
- * Extends Component to provide error boundary lifecycle methods.
- */
 class SystemGuardian extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -42,28 +40,19 @@ class SystemGuardian extends Component<Props, State> {
             </div>
             <h1 className="text-2xl font-bold mb-2">Recuperação de Sistema</h1>
             <p className="text-slate-400 mb-6 text-sm">O Guardião interceptou um erro crítico (v{SYSTEM_IDENTITY.VERSION}).</p>
-            
             <div className="bg-black/30 rounded-lg p-4 mb-6 text-left overflow-auto max-h-32 border border-slate-700 custom-scrollbar">
               <code className="text-[10px] text-red-300 font-mono whitespace-pre-wrap">
                 {error?.name}: {error?.message || "Erro inesperado detectado."}
               </code>
             </div>
-
-            <div className="flex flex-col gap-3">
-                <button 
-                  onClick={() => window.location.reload()} 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg"
-                >
-                  Tentar Novamente
-                </button>
-            </div>
+            <button onClick={() => window.location.reload()} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
+              Tentar Novamente
+            </button>
           </div>
         </div>
       );
     }
-
     return children;
   }
 }
-
 export default SystemGuardian;
