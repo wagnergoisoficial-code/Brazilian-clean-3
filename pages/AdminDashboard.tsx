@@ -38,6 +38,7 @@ const AdminDashboard: React.FC = () => {
 
   const [authenticatedAdminId, setAuthenticatedAdminId] = useState<string | null>(localStorage.getItem('bc_auth_admin_id'));
   const [accessCode, setAccessCode] = useState('');
+  const [showCode, setShowCode] = useState(false); // Visibility Toggle State
   const [activeTab, setActiveTab] = useState<'overview' | 'cleaners' | 'leads' | 'support' | 'team' | 'infra' | 'logs'>('overview');
   const [sysHealth, setSysHealth] = useState<SystemHealth>(checkSystemHealth());
 
@@ -83,8 +84,29 @@ const AdminDashboard: React.FC = () => {
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-scale-in">
           <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter mb-2">Terminal Admin</h2>
           <p className="text-slate-500 text-sm mb-8">Digite o código de autorização</p>
-          <form handleAdminLogin={handleAdminLogin} className="space-y-6">
-            <input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} className="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 focus:border-slate-900 outline-none text-center text-3xl tracking-widest font-mono" placeholder="••••••" autoFocus />
+          <form onSubmit={handleAdminLogin} className="space-y-6">
+            <div className="relative">
+                <input 
+                  type={showCode ? "text" : "password"} 
+                  value={accessCode} 
+                  onChange={e => setAccessCode(e.target.value)} 
+                  className="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 focus:border-slate-900 outline-none text-center text-3xl tracking-widest font-mono" 
+                  placeholder="••••••" 
+                  autoFocus 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowCode(!showCode)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition p-2"
+                  title={showCode ? "Ocultar código" : "Mostrar código"}
+                >
+                    {showCode ? (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    ) : (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    )}
+                </button>
+            </div>
             <button className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition">Verificar Identidade</button>
           </form>
           <p className="mt-8 text-[10px] text-slate-400 uppercase tracking-widest font-bold">Ambiente Seguro v{SYSTEM_IDENTITY.VERSION}</p>
@@ -216,15 +238,9 @@ const AdminDashboard: React.FC = () => {
                    <div className="space-y-3">
                       <button 
                         onClick={() => alert('Backup manual iniciado!')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition uppercase text-xs tracking-widest"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-xs uppercase tracking-widest"
                       >
-                        Gerar Novo Backup
-                      </button>
-                      <button 
-                        onClick={() => { if(confirm("Deseja restaurar o sistema para o último ponto estável?")) alert('Restauração iniciada...'); }}
-                        className="w-full bg-slate-700 hover:bg-slate-600 text-white font-black py-4 rounded-2xl transition uppercase text-xs tracking-widest border border-slate-600"
-                      >
-                        Restaurar via Ponto de Controle
+                        Executar Backup Manual
                       </button>
                    </div>
                 </div>
@@ -232,172 +248,190 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* PRESERVE OVERVIEW TAB */}
-        {activeTab === 'overview' && (
-          <div className="space-y-10 animate-fade-in">
-            <header>
-                <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Visão Geral do Sistema</h2>
-                <p className="text-slate-500">Principais métricas operacionais e de conversão.</p>
-            </header>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {[
-                    { label: 'Profissionais Pendentes', value: stats.pending, color: 'text-yellow-600' },
-                    { label: 'Leads Ativos', value: stats.leads, color: 'text-blue-600' },
-                    { label: 'Tickets Abertos', value: stats.tickets, color: 'text-red-600' },
-                    { label: 'Membros da Equipe', value: stats.teamCount, color: 'text-green-600' }
-                ].map(s => (
-                    <div key={s.label} className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">{s.label}</p>
-                        <p className={`text-4xl font-black mt-1 ${s.color}`}>{s.value}</p>
-                    </div>
-                ))}
-            </div>
-            
-            <div className="bg-blue-900 rounded-[40px] p-10 text-white shadow-xl">
-               <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Integridade v{SYSTEM_IDENTITY.VERSION}</h3>
-               <p className="text-blue-200 text-sm max-w-2xl leading-relaxed">
-                  Todos os sistemas de proteção (Error Boundary e Recovery Protocol) estão ativos e monitorados.
-                  Consulte a aba de <strong>Infraestrutura</strong> para detalhes técnicos sobre o consumo de API e Gemini Credits.
-               </p>
-            </div>
-          </div>
-        )}
-
         {/* TAB: CLEANERS */}
         {activeTab === 'cleaners' && (
-          <div className="space-y-6 animate-fade-in">
+           <div className="space-y-6 animate-fade-in">
               <header className="flex justify-between items-end">
                 <div>
                   <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">House Cleaners</h2>
-                  <p className="text-slate-500">Gerencie contas profissionais e verificações de identidade.</p>
+                  <p className="text-slate-500">Gerenciamento e aprovação de profissionais.</p>
                 </div>
-                <div className="w-64">
-                  <input 
-                    type="text" 
-                    placeholder="Buscar por nome, email, zip..." 
-                    className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
-                    value={userSearch}
-                    onChange={e => setUserSearch(e.target.value)}
-                  />
+                <div className="relative">
+                   <input 
+                     type="text" 
+                     placeholder="Buscar por nome, email ou ZIP..." 
+                     className="bg-white border-2 border-slate-100 pl-10 pr-4 py-3 rounded-2xl text-sm font-bold focus:border-slate-900 outline-none w-64 md:w-80"
+                     value={userSearch}
+                     onChange={(e) => setUserSearch(e.target.value)}
+                   />
+                   <svg className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
               </header>
 
-              <div className="grid gap-6">
-                  {filteredCleaners.map(c => (
-                      <div key={c.id} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 flex gap-8 items-start">
-                          <img src={c.photoUrl} className="w-24 h-24 rounded-[32px] object-cover border shrink-0 bg-gray-100 shadow-inner" />
-                          <div className="flex-1 space-y-4">
-                              <div className="flex justify-between items-start">
-                                  <div>
-                                      <h3 className="font-black text-xl text-slate-900 tracking-tight">{c.fullName}</h3>
-                                      <p className="text-xs text-slate-400 font-bold">{c.email} | {c.phone}</p>
-                                      <p className="text-[10px] font-black text-blue-600 mt-1 uppercase tracking-widest">Status: {c.status}</p>
-                                  </div>
-                                  <div className="flex flex-col items-end gap-2">
-                                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${c.status === CleanerStatus.VERIFIED ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{c.status}</span>
-                                      {permissions.canResendVerificationCode && !c.emailVerified && (
-                                        <button onClick={() => resendCleanerCode(c.id)} className="text-[9px] font-black text-blue-600 hover:underline uppercase tracking-widest">Reenviar E-mail</button>
-                                      )}
-                                  </div>
-                              </div>
-                              <div className="bg-slate-50 p-6 rounded-[32px] grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <VerificationBadge result={c.aiVerificationResult} />
-                                  <div className="flex gap-3 justify-end">
-                                      <button onClick={() => window.open(c.documentFrontUrl)} className="w-16 h-16 rounded-2xl border-2 border-white bg-gray-200 overflow-hidden shadow-sm hover:scale-105 transition"><img src={c.documentFrontUrl} className="w-full h-full object-cover" /></button>
-                                      <button onClick={() => window.open(c.selfieWithDocUrl)} className="w-16 h-16 rounded-2xl border-2 border-white bg-gray-200 overflow-hidden shadow-sm hover:scale-105 transition"><img src={c.selfieWithDocUrl} className="w-full h-full object-cover" /></button>
-                                  </div>
-                              </div>
-                              <div className="flex gap-3">
-                                  {permissions.canApproveDocuments && (
-                                    <button onClick={() => verifyCleaner(c.id, authenticatedAdminId)} className="bg-emerald-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition shadow-lg">Aprovar Documentos</button>
-                                  )}
-                                  {permissions.canRejectDocuments && (
-                                    <button onClick={() => rejectCleaner(c.id, authenticatedAdminId)} className="bg-orange-50 text-orange-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-100 transition">Solicitar Nova Foto</button>
-                                  )}
-                                  <button onClick={() => { if(confirm("Suspender conta?")) deleteCleaner(c.id, authenticatedAdminId); }} className="bg-red-50 text-red-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ml-auto hover:bg-red-100 transition">Suspender</button>
-                              </div>
-                          </div>
-                      </div>
-                  ))}
-              </div>
-          </div>
-        )}
-
-        {/* LOGS TAB */}
-        {activeTab === 'logs' && (
-          <div className="space-y-6 animate-fade-in">
-              <header>
-                <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Logs de Auditoria</h2>
-                <p className="text-slate-500">Registro imutável de todas as ações administrativas.</p>
-              </header>
-              <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-                  <table className="w-full text-left">
-                      <thead className="bg-slate-50 border-b border-slate-100">
-                          <tr>
-                              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Timestamp</th>
-                              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Admin</th>
-                              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ação</th>
-                              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Detalhes</th>
+              <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+                 <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-100">
+                       <tr>
+                          <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Profissional</th>
+                          <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                          <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Verificação IA</th>
+                          <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ações</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                       {filteredCleaners.length === 0 ? (
+                           <tr><td colSpan={4} className="p-10 text-center text-slate-400 italic">Nenhum profissional encontrado.</td></tr>
+                       ) : filteredCleaners.map(c => (
+                          <tr key={c.id} className="hover:bg-slate-50 transition">
+                             <td className="p-6">
+                                <div className="flex items-center gap-4">
+                                   <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
+                                      {c.photoUrl ? <img src={c.photoUrl} className="w-full h-full object-cover" alt="" /> : <span className="w-full h-full flex items-center justify-center text-slate-400 font-bold text-xs">{c.fullName.charAt(0)}</span>}
+                                   </div>
+                                   <div>
+                                      <p className="font-bold text-slate-900 text-sm">{c.fullName}</p>
+                                      <p className="text-xs text-slate-500">{c.email}</p>
+                                   </div>
+                                </div>
+                             </td>
+                             <td className="p-6">
+                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                                    c.status === 'VERIFIED' ? 'bg-green-100 text-green-700' :
+                                    c.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                   {c.status.replace('_', ' ')}
+                                </span>
+                             </td>
+                             <td className="p-6">
+                                <VerificationBadge result={c.aiVerificationResult} />
+                             </td>
+                             <td className="p-6">
+                                <div className="flex gap-2">
+                                    {c.status !== 'VERIFIED' && (
+                                        <button 
+                                            onClick={() => verifyCleaner(c.id, authenticatedAdminId!)}
+                                            className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-600 transition"
+                                        >
+                                            Aprovar
+                                        </button>
+                                    )}
+                                    {c.status !== 'REJECTED' && (
+                                        <button 
+                                            onClick={() => rejectCleaner(c.id, authenticatedAdminId!)}
+                                            className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition"
+                                        >
+                                            Reprovar
+                                        </button>
+                                    )}
+                                    <button onClick={() => deleteCleaner(c.id, authenticatedAdminId!)} className="text-slate-400 hover:text-red-500 p-2" title="Excluir">🗑</button>
+                                    <button onClick={() => resendCleanerCode(c.id)} className="text-blue-400 hover:text-blue-600 p-2" title="Reenviar Código">✉️</button>
+                                </div>
+                             </td>
                           </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                          {auditLogs.map(log => (
-                              <tr key={log.id} className="hover:bg-slate-50 transition">
-                                  <td className="p-6 text-xs text-slate-500">{new Date(log.timestamp).toLocaleString()}</td>
-                                  <td className="p-6 text-xs font-bold text-slate-900">{log.adminName}</td>
-                                  <td className="p-6 text-xs font-black text-blue-600 uppercase tracking-tight">{log.action}</td>
-                                  <td className="p-6 text-xs text-slate-600">{log.details}</td>
-                              </tr>
-                          ))}
-                      </tbody>
-                  </table>
-                  {auditLogs.length === 0 && <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum log registrado até o momento</div>}
+                       ))}
+                    </tbody>
+                 </table>
               </div>
-          </div>
+           </div>
         )}
 
-        {/* SUPPORT TAB */}
+        {/* TAB: SUPPORT */}
         {activeTab === 'support' && (
-            <div className="space-y-8 animate-fade-in">
-                <header>
-                    <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Central de Tickets</h2>
-                    <p className="text-slate-500">Gerencie solicitações de suporte de clientes e profissionais.</p>
+            <div className="space-y-6 animate-fade-in">
+                <header className="flex justify-between items-end">
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Central de Suporte</h2>
+                        <p className="text-slate-500">Tickets de clientes e profissionais.</p>
+                    </div>
                 </header>
 
-                <div className="grid gap-6">
-                    {supportRequests.map(r => (
-                        <div key={r.id} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex justify-between items-start">
-                            <div className="space-y-3 flex-1">
-                                <div className="flex items-center gap-3">
-                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${r.type === SupportType.CLEANER ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{r.type}</span>
-                                    <h4 className="font-black text-lg text-slate-900">{r.fullName}</h4>
+                <div className="grid grid-cols-1 gap-4">
+                    {supportRequests.length === 0 ? (
+                        <div className="p-10 text-center text-slate-400 bg-white rounded-3xl border border-slate-100">Nenhum ticket aberto.</div>
+                    ) : supportRequests.map(req => (
+                        <div key={req.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${req.type === SupportType.CLIENT ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                        {req.type === SupportType.CLIENT ? 'CLIENT (USA)' : 'PRO (BR)'}
+                                    </span>
+                                    <span className="text-xs text-slate-400 font-bold">{new Date(req.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 italic text-slate-600 text-sm leading-relaxed">
-                                   "{r.message}"
-                                </div>
-                                <div className="flex gap-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <span className="flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> {r.contactEmail || 'N/A'}</span>
-                                    <span className="flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg> {r.contactPhone}</span>
+                                <h3 className="font-bold text-slate-900">{req.fullName}</h3>
+                                <p className="text-sm text-slate-600 mt-1 mb-3">{req.message}</p>
+                                <div className="flex gap-4 text-xs font-medium text-slate-500">
+                                    {req.contactEmail && <span>📧 {req.contactEmail}</span>}
+                                    {req.contactPhone && <span>📞 {req.contactPhone}</span>}
+                                    {req.whatsapp && <span>📱 {req.whatsapp}</span>}
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-3 pl-8">
+                            <div className="flex flex-col gap-2">
                                 <select 
-                                    className="bg-slate-100 border-none rounded-xl text-[10px] font-black uppercase p-3 outline-none focus:ring-2 focus:ring-blue-500"
-                                    value={r.status}
-                                    onChange={e => updateSupportStatus(r.id, e.target.value as SupportStatus)}
+                                    value={req.status}
+                                    onChange={(e) => updateSupportStatus(req.id, e.target.value as SupportStatus)}
+                                    className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold p-2 outline-none focus:border-slate-900"
                                 >
                                     <option value={SupportStatus.NEW}>Novo</option>
-                                    <option value={SupportStatus.IN_PROGRESS}>Em Atendimento</option>
+                                    <option value={SupportStatus.IN_PROGRESS}>Em Análise</option>
                                     <option value={SupportStatus.RESOLVED}>Resolvido</option>
                                 </select>
-                                <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-black transition">Acessar Perfil</button>
                             </div>
                         </div>
                     ))}
-                    {supportRequests.length === 0 && <div className="p-20 text-center text-slate-300 font-black uppercase text-xs tracking-[0.3em]">Nenhum ticket ativo</div>}
                 </div>
             </div>
         )}
+
+        {/* TAB: LEADS (READ ONLY VIEW) */}
+        {activeTab === 'leads' && (
+            <div className="space-y-6 animate-fade-in">
+                <header>
+                    <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Marketplace Leads</h2>
+                    <p className="text-slate-500">Monitoramento de oportunidades em tempo real.</p>
+                </header>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {leads.map(lead => (
+                        <div key={lead.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm opacity-80 hover:opacity-100 transition">
+                            <div className="flex justify-between mb-4">
+                                <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-1 rounded-full uppercase">{lead.status}</span>
+                                <span className="text-xs font-mono text-slate-400">{lead.id}</span>
+                            </div>
+                            <h3 className="font-bold text-slate-900">{lead.clientName}</h3>
+                            <p className="text-sm text-slate-500 mb-2">{lead.serviceType} • {lead.zipCode}</p>
+                            <div className="text-xs text-slate-400">
+                                <p>Criado em: {new Date(lead.createdAt).toLocaleString()}</p>
+                                <p>Aceito por: {lead.acceptedByCleanerId ? cleaners.find(c => c.id === lead.acceptedByCleanerId)?.fullName : '---'}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'logs' && (
+            <div className="space-y-6 animate-fade-in">
+                <header>
+                    <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Audit Logs</h2>
+                    <p className="text-slate-500">Registro imutável de ações administrativas.</p>
+                </header>
+                <div className="bg-slate-900 text-slate-300 p-6 rounded-3xl font-mono text-xs h-96 overflow-y-auto custom-scrollbar">
+                    {auditLogs.length === 0 ? (
+                        <p className="text-slate-600">// Nenhum log registrado.</p>
+                    ) : auditLogs.map(log => (
+                        <div key={log.id} className="mb-2 border-b border-slate-800 pb-2">
+                            <span className="text-emerald-500">[{new Date(log.timestamp).toISOString()}]</span>
+                            <span className="text-blue-400"> {log.adminName} ({log.adminId})</span>
+                            <span className="text-white"> executed {log.action}</span>
+                            <span className="text-slate-500"> on {log.targetType}:{log.targetId}</span>
+                            <p className="pl-4 text-slate-500 opacity-70">Details: {log.details}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
       </main>
     </div>
   );

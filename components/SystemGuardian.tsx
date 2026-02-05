@@ -1,3 +1,4 @@
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { SYSTEM_IDENTITY } from '../config/SystemManifest';
 
@@ -15,13 +16,10 @@ interface State {
  * Extends Component to provide error boundary lifecycle methods.
  */
 class SystemGuardian extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
