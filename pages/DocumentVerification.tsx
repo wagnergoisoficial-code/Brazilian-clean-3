@@ -217,25 +217,30 @@ const DocumentVerification: React.FC = () => {
   const [editingField, setEditingField] = useState<AssetField | null>(null);
   const [tempImage, setTempImage] = useState<string | null>(null);
 
-  // PRODUCTION-FIX: State now holds URLs, not base64 data.
   const [assetUrls, setAssetUrls] = useState<Record<AssetField, string>>({
       docFront: '', docBack: '', facePhoto: '', selfieWithDoc: ''
   });
   
-  // State to track upload progress for each field
   const [uploadStatus, setUploadStatus] = useState<Record<AssetField, UploadStatus>>({
       docFront: 'idle', docBack: 'idle', facePhoto: 'idle', selfieWithDoc: 'idle'
   });
 
-  // Effect for automatic cleanup of blob URLs on component unmount
+  // PRODUCTION-FIX: Safely handle blob URL cleanup to prevent crashes.
+  // This ref keeps track of the current URLs.
+  const assetUrlsRef = useRef(assetUrls);
+  assetUrlsRef.current = assetUrls;
+
+  // This effect will ONLY run when the component unmounts.
   useEffect(() => {
     return () => {
-      Object.values(assetUrls).forEach(url => {
+      // On unmount, get the latest URLs from the ref and clean them all up.
+      const urlsToClean = Object.values(assetUrlsRef.current);
+      urlsToClean.forEach(url => {
         if (url) cleanupStorageUrl(url);
       });
-      console.log("[System] DocumentVerification component unmounted, cleaning up blob URLs.");
+      console.log("[System] DocumentVerification unmounted. All blob URLs revoked.", urlsToClean);
     };
-  }, [assetUrls]);
+  }, []); // Empty dependency array is crucial for this to run only on unmount.
   
   useEffect(() => {
     if (!myProfile && !targetId) { navigate('/professional'); }
@@ -278,19 +283,17 @@ const DocumentVerification: React.FC = () => {
     setUploadStatus(prev => ({ ...prev, [fieldToUpdate]: 'uploading' }));
     
     try {
-        // PRODUCTION-FIX: Upload document and get URL
         const fileUrl = await uploadDocument(croppedBase64);
         
-        // Clean up old blob URL if it exists to prevent memory leaks
-        if (assetUrls[fieldToUpdate]) {
-            cleanupStorageUrl(assetUrls[fieldToUpdate]);
+        // Clean up the *previous* blob URL for this specific field to prevent memory leaks.
+        const oldUrl = assetUrls[fieldToUpdate];
+        if (oldUrl && oldUrl.startsWith('blob:')) {
+            cleanupStorageUrl(oldUrl);
         }
         
-        // Update local state with the new URL
         setAssetUrls(prev => ({ ...prev, [fieldToUpdate]: fileUrl }));
         setUploadStatus(prev => ({ ...prev, [fieldToUpdate]: 'success' }));
         
-        // Update AppContext with the URL, NOT the base64 data
         const profileUpdate: Partial<CleanerProfile> = {};
         if (fieldToUpdate === 'docFront') profileUpdate.documentFrontUrl = fileUrl;
         if (fieldToUpdate === 'docBack') profileUpdate.documentBackUrl = fileUrl;
@@ -316,28 +319,18 @@ const DocumentVerification: React.FC = () => {
       setStep(prev => prev + 1);
   };
   
-  // This function now expects base64 data to be read from the blob URLs for AI verification.
   const handleFinalSubmission = async () => {
-    // This is a complex operation in a real app. For this mock, we'll assume
-    // that the `performIdentityVerification` can handle blob URLs, or we'd
-    // have to convert them back to base64 here before sending.
-    // For simplicity, we proceed as if the URLs are sufficient.
     const allSuccessful = Object.values(uploadStatus).every(s => s === 'success');
     
     if (!allSuccessful || !myProfile || !targetId) {
         return alert("Incompleto. Certifique-se de que todos os 4 documentos foram enviados com sucesso.");
     }
     setIsVerifying(true);
-    //... rest of the function remains similar, but instead of sending `assets` (base64)
-    // to the AI service, you would send `assetUrls`.
-    // The backend function would then need to fetch these blobs.
-    // For this simulation, we'll skip the re-conversion part and assume the flow completes.
     console.log("Submitting asset URLs for verification:", assetUrls);
     updateCleanerProfile(targetId, { status: CleanerStatus.VERIFICATION_PENDING });
     setTimeout(() => navigate('/dashboard'), 1500);
   };
 
-  // Helper to render the status UI for each upload box
   const renderUploadBox = (field: AssetField, title: string, icon: string, aspectRatio: '3/2' | '1/1' = '3/2') => {
     const status = uploadStatus[field];
     const url = assetUrls[field];
@@ -378,7 +371,6 @@ const DocumentVerification: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-teal-50 py-12 px-4 flex items-center justify-center font-sans overflow-x-hidden">
-       {/* ... The ImageEditor JSX remains the same ... */}
        {editingField && tempImage && (
          <ImageEditor 
            key={`editor-overlay-${editingField}`}
@@ -395,7 +387,6 @@ const DocumentVerification: React.FC = () => {
        )}
       
       <div className="max-w-2xl w-full bg-white rounded-[48px] shadow-2xl overflow-hidden animate-scale-in border border-slate-100">
-         {/* ... The header JSX remains the same ... */}
         <div className="bg-slate-900 p-12 text-center text-white relative">
            <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-800">
               <div 

@@ -57,7 +57,7 @@ class SystemGuardian extends Component<Props, State> {
               </code>
             </div>
             <button onClick={this.handleHardReset} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
-              Reset & Reload
+              Reiniciar e Recarregar
             </button>
           </div>
         </div>
