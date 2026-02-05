@@ -5,7 +5,7 @@ import {
   SupportRequest, SupportStatus, SupportType, TeamMember, AuditLog, EmailNotification
 } from '../types';
 import { translateChatMessage } from '../services/geminiService';
-import { canCleanerServeZip } from '../services/locationService';
+import { canCleanerServeZip, normalizeZip } from '../services/locationService';
 import { sortCleanersByMerit } from '../services/meritService';
 
 interface AppContextType {
@@ -46,7 +46,9 @@ interface AppContextType {
   deleteCleaner: (id: string, adminId: string) => void;
   updateSupportStatus: (id: string, status: SupportStatus) => void;
   requestPasswordReset: (email: string) => Promise<void>;
+  updateLead: (leadId: string, data: Partial<Lead>) => void;
   updateLeadOutcome: (leadId: string, outcome: 'COMPLETED' | 'LOST') => void;
+  searchCleaners: (zip: string, service?: string) => CleanerProfile[];
   deleteMyAccount: () => void;
   [key: string]: any;
 }
@@ -77,8 +79,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const safeParse = (key: string, fallback: any) => {
         try {
           const item = localStorage.getItem(key);
+          // CRITICAL: If an item is corrupted (e.g., contains unserializable data like old image base64),
+          // this will catch the JSON.parse error and return the fallback, preventing a hydration crash.
           return item ? JSON.parse(item) : fallback;
-        } catch (e) { return fallback; }
+        } catch (e) { 
+          console.warn(`[Hydration Guard] Corrupted data in localStorage for key: ${key}. Falling back to default.`);
+          return fallback; 
+        }
       };
 
       setCleaners(safeParse('bc_cleaners', []));
@@ -220,11 +227,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const distributeLead = (lead: Lead) => {
-    const serviceKey = Object.keys(SERVICE_UI_MAP_EN).find(key => SERVICE_UI_MAP_EN[key] === lead.serviceType) || lead.serviceType;
+    const serviceKey = lead.serviceType.toLowerCase().replace(/ /g, '_');
 
     const availableCleaners = cleaners.filter(c => 
         c.status === CleanerStatus.ACTIVE &&
         c.isAvailable === true &&
+        c.isListed === true &&
         canCleanerServeZip(c, lead.zipCode) &&
         c.services.includes(serviceKey)
     );
@@ -280,6 +288,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const updateLead = (leadId: string, data: Partial<Lead>) => {
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...data } : l));
+  };
+  
   const updateLeadOutcome = (leadId: string, outcome: 'COMPLETED' | 'LOST') => {
     setLeads(prev => prev.map(l => {
       if (l.id === leadId) {
@@ -329,6 +341,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
+  const searchCleaners = (zip: string, service?: string): CleanerProfile[] => {
+    const normalizedTargetZip = normalizeZip(zip);
+    return cleaners.filter(c => 
+        c.status === CleanerStatus.ACTIVE &&
+        c.isListed &&
+        canCleanerServeZip(c, normalizedTargetZip) &&
+        (!service || c.services.includes(service))
+    );
+  };
+  
   const verifyCleaner = (id: string, adminId: string) => {
     updateCleanerProfile(id, { status: CleanerStatus.ACTIVE, isListed: true });
     setAuditLogs(prev => [{ id: Math.random().toString(36).substr(2, 9), adminId, adminName: "Admin", action: "VERIFY_CLEANER", targetId: id, targetType: 'CLEANER', timestamp: new Date().toISOString(), details: "Documents verified manually" }, ...prev]);
@@ -367,13 +389,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const getMessagesForRoom = (roomId: string) => chatMessages.filter(m => m.chatRoomId === roomId);
   const clearLastEmail = () => setLastEmail(null);
 
-  const SERVICE_UI_MAP_EN: Record<string, string> = {
-    'standard': 'Standard Clean',
-    'deep': 'Deep Clean',
-    'move': 'Move In/Out',
-    'post-construction': 'Post-Construction'
-  };
-
   return (
     <AppContext.Provider value={{ 
       cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs,
@@ -383,7 +398,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       acceptLead, sendChatMessage, getRoomForLead, getMessagesForRoom, updateCleanerProfile,
       verifyCleanerCode, resendCleanerCode, resendClientCode, createSupportRequest,
       verifyCleaner, rejectCleaner, deleteCleaner, updateSupportStatus, requestPasswordReset,
-      toggleAvailability, SERVICE_UI_MAP_EN, updateLeadOutcome, deleteMyAccount
+      toggleAvailability, updateLead, updateLeadOutcome, searchCleaners, deleteMyAccount
     }}>
       {children}
     </AppContext.Provider>
