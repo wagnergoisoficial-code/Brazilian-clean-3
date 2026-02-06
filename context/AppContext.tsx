@@ -23,6 +23,7 @@ interface AppContextType {
   pendingClientCode: string | null;
   pendingClientEmail: string | null;
   pendingClientCodeExpires: number | null;
+  SERVICE_UI_MAP_EN: Record<string, string>;
   
   setIsChatOpen: (open: boolean) => void;
   clearLastEmail: () => void;
@@ -52,14 +53,35 @@ interface AppContextType {
   [key: string]: any;
 }
 
+const SERVICE_UI_MAP_EN: Record<string, string> = {
+  'residential_cleaning': 'Standard Clean',
+  'recurring_cleaning_weekly': 'Weekly Clean',
+  'recurring_cleaning_biweekly': 'Bi-Weekly Clean',
+  'recurring_cleaning_monthly': 'Monthly Clean',
+  'deep_cleaning': 'Deep Cleaning',
+  'move_in_out': 'Move In/Out',
+  'office_cleaning': 'Office Cleaning',
+  'commercial_cleaning': 'Commercial Clean',
+  'window_cleaning': 'Window Cleaning',
+  'oven_cleaning': 'Oven Cleaning',
+  'refrigerator_cleaning': 'Fridge Cleaning',
+  'carpet_cleaning': 'Carpet Cleaning',
+  'sofa_cleaning': 'Sofa Cleaning',
+  'deck_cleaning': 'Deck & Patio',
+  'laundry_ironing': 'Laundry & Ironing',
+  'mommy_helper': 'Mommy Helper',
+  'elder_care': 'Elderly Care',
+  'pet_care': 'Pet Care',
+  'express_cleaning': 'Express Clean',
+  'organization_service': 'Organization',
+  'babysitting': 'Babysitting'
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Fix: Exporting useAppContext to resolve multi-file import errors.
 export const useAppContext = () => {
   const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
+  if (context === undefined) throw new Error('useAppContext must be used within an AppProvider');
   return context;
 };
 
@@ -89,7 +111,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const blobFields = ['documentFrontUrl', 'documentBackUrl', 'facePhotoUrl', 'selfieWithDocUrl', 'photoUrl'];
       blobFields.forEach(field => {
         const value = sanitized[field];
-        if (typeof value === 'string' && (value.startsWith('data:') || value.length > 2000)) {
+        if (typeof value === 'string' && (value.startsWith('data:') || value.length > 5000)) {
           sanitized[field] = '';
         }
       });
@@ -106,9 +128,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           let parsed = JSON.parse(item);
           if (key === 'bc_cleaners') return sanitizeStorageData(parsed);
           return parsed;
-        } catch (e) { 
-          return fallback; 
-        }
+        } catch (e) { return fallback; }
       };
 
       setCleaners(safeParse('bc_cleaners', []));
@@ -131,42 +151,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => { 
     if(isHydrated) {
-      const dataToPersist = {
-        'bc_cleaners': cleaners,
-        'bc_leads': leads,
-        'bc_chat_rooms': chatRooms,
-        'bc_chat_messages': chatMessages,
-        'bc_support': supportRequests,
-        'bc_team': teamMembers,
-        'bc_logs': auditLogs
+      const persist = (key: string, val: any) => {
+        try { localStorage.setItem(key, JSON.stringify(val)); } 
+        catch (e: any) { if (e.name === 'QuotaExceededError') localStorage.removeItem('bc_logs'); }
       };
-
-      Object.entries(dataToPersist).forEach(([key, value]) => {
-        try {
-          localStorage.setItem(key, JSON.stringify(value));
-        } catch (e: any) {
-          if (e.name === 'QuotaExceededError' && key === 'bc_logs') {
-            localStorage.removeItem('bc_logs');
-          }
-        }
-      });
+      persist('bc_cleaners', cleaners);
+      persist('bc_leads', leads);
+      persist('bc_chat_rooms', chatRooms);
+      persist('bc_chat_messages', chatMessages);
+      persist('bc_support', supportRequests);
+      persist('bc_team', teamMembers);
+      persist('bc_logs', auditLogs);
     }
   }, [cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs, isHydrated]);
-
-  const dispatchEmail = async (to: string, language: 'en' | 'pt'): Promise<string | null> => {
-    try {
-      const response = await fetch('/.netlify/functions/sendVerificationEmail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, language })
-      });
-      const data = await response.json();
-      if (data.success && data.code) return data.code;
-      return null;
-    } catch (err) {
-      return null;
-    }
-  };
 
   const loginCleaner = async (email: string, password: string): Promise<CleanerProfile | null> => {
     const cleaner = cleaners.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
@@ -181,9 +178,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const registerCleaner = async (data: Partial<CleanerProfile>): Promise<string> => {
     const id = Math.random().toString(36).substr(2, 9);
-    let code = await dispatchEmail(data.email || '', 'pt');
-    if (!code) code = Math.floor(100000 + Math.random() * 900000).toString();
-    
     const newCleaner: CleanerProfile = {
       id,
       fullName: data.fullName || '',
@@ -201,7 +195,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       reviewCount: 0,
       joinedDate: new Date().toISOString(),
       emailVerified: false,
-      verificationCode: code,
+      verificationCode: Math.floor(100000 + Math.random() * 900000).toString(),
       verificationCodeExpires: Date.now() + 600000,
       photoUrl: '',
       galleryUrls: [],
@@ -219,8 +213,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCleaners(prev => [...prev, newCleaner]);
-    // Fix: Added missing return id to resolve type error on line 185.
+    setAuthenticatedCleanerId(id);
+    setUserRole(UserRole.CLEANER);
+    localStorage.setItem('bc_auth_cleaner_id', id);
+    
+    setLastEmail({
+      to: newCleaner.email,
+      subject: "Seu código de verificação",
+      body: `Olá! Seu código é: ${newCleaner.verificationCode}`,
+      actionLink: `/verify?id=${id}&code=${newCleaner.verificationCode}`,
+      actionText: "Verificar Conta"
+    });
     return id;
+  };
+
+  const verifyCleanerCode = (id: string, code: string) => {
+    const cleaner = cleaners.find(c => c.id === id);
+    if (!cleaner) return { success: false, error: "Profissional não encontrado." };
+    if (cleaner.verificationCode === code) {
+      updateCleanerProfile(id, { emailVerified: true, status: CleanerStatus.EMAIL_VERIFIED });
+      return { success: true };
+    }
+    return { success: false, error: "Código incorreto." };
   };
 
   const logout = () => {
@@ -229,53 +243,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.removeItem('bc_auth_cleaner_id');
   };
 
-  const createLead = async (leadData: Partial<Lead>) => {
+  const updateCleanerProfile = (id: string, data: Partial<CleanerProfile>) => {
+    setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  };
+
+  const createLead = async (l: Partial<Lead>) => {
     const id = Math.random().toString(36).substr(2, 9);
-    const newLead: Lead = {
-      id,
-      clientName: leadData.clientName || '',
-      clientPhone: leadData.clientPhone || '',
-      clientEmail: leadData.clientEmail || '',
-      zipCode: leadData.zipCode || '',
-      serviceType: leadData.serviceType || '',
-      bedrooms: leadData.bedrooms || 0,
-      bathrooms: leadData.bathrooms || 0,
-      date: leadData.date || '',
-      status: 'NEW',
-      createdAt: Date.now(),
-      ...leadData
-    };
-    
-    const matchingCleaners = cleaners.filter(c => canCleanerServeZip(c, newLead.zipCode));
-    newLead.broadcastToIds = matchingCleaners.map(c => c.id);
-    
-    setLeads(prev => [...prev, newLead]);
-    
-    const code = await dispatchEmail(newLead.clientEmail || '', 'en');
-    setPendingClientCode(code);
-    setPendingClientEmail(newLead.clientEmail || null);
-    setPendingClientCodeExpires(Date.now() + 600000);
+    const newLead: Lead = { ...l, id, status: 'NEW', createdAt: Date.now() } as Lead;
+    setLeads(prev => [newLead, ...prev]);
   };
 
   const acceptLead = (leadId: string, cleanerId: string) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? {
-      ...l,
-      status: 'ASSIGNED' as const,
-      acceptedByCleanerId: cleanerId,
-      history: [...(l.history || []), { timestamp: Date.now(), event: 'Lead accepted by cleaner' }]
-    } : l));
-
-    const lead = leads.find(l => l.id === leadId);
-    if (lead) {
-      const roomId = Math.random().toString(36).substr(2, 9);
-      setChatRooms(prev => [...prev, {
-        id: roomId,
-        leadId,
-        clientId: lead.clientEmail || 'unknown',
-        cleanerId,
-        createdAt: Date.now()
-      }]);
-    }
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: 'ASSIGNED', acceptedByCleanerId: cleanerId } : l));
   };
 
   const toggleAvailability = (id: string) => {
@@ -299,70 +278,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const getRoomForLead = (leadId: string) => chatRooms.find(r => r.leadId === leadId);
   const getMessagesForRoom = (roomId: string) => chatMessages.filter(m => m.chatRoomId === roomId);
-
-  const updateCleanerProfile = (id: string, data: Partial<CleanerProfile>) => {
-    setCleaners(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-  };
-
-  const verifyCleanerCode = (id: string, code: string) => {
-    const cleaner = cleaners.find(c => c.id === id);
-    if (cleaner && cleaner.verificationCode === code) {
-      updateCleanerProfile(id, { status: CleanerStatus.EMAIL_VERIFIED, emailVerified: true });
-      return { success: true };
-    }
-    return { success: false, error: 'Código inválido' };
-  };
-
-  const resendCleanerCode = async (id: string) => {
-    const cleaner = cleaners.find(c => c.id === id);
-    if (cleaner) {
-      const code = await dispatchEmail(cleaner.email, 'pt');
-      updateCleanerProfile(id, { verificationCode: code || undefined, verificationCodeExpires: Date.now() + 600000 });
-    }
-  };
-
-  const resendClientCode = async () => {
-    if (pendingClientEmail) {
-      const code = await dispatchEmail(pendingClientEmail, 'en');
-      setPendingClientCode(code);
-      setPendingClientCodeExpires(Date.now() + 600000);
-    }
-  };
-
-  const createSupportRequest = (req: Partial<SupportRequest>) => {
-    const newReq: SupportRequest = {
-      id: Math.random().toString(36).substr(2, 9),
-      type: req.type || SupportType.CLIENT,
-      fullName: req.fullName || '',
-      contactPhone: req.contactPhone || '',
-      message: req.message || '',
-      status: SupportStatus.NEW,
-      createdAt: new Date().toISOString(),
-      ...req
-    };
-    setSupportRequests(prev => [...prev, newReq]);
-  };
-
-  const verifyCleaner = (id: string, adminId: string) => updateCleanerProfile(id, { status: CleanerStatus.ACTIVE });
-  const rejectCleaner = (id: string, adminId: string) => updateCleanerProfile(id, { status: CleanerStatus.REJECTED });
-  const deleteCleaner = (id: string, adminId: string) => setCleaners(prev => prev.filter(c => c.id !== id));
+  const createSupportRequest = (req: Partial<SupportRequest>) => setSupportRequests(prev => [...prev, { ...req, id: Math.random().toString(36).substr(2, 9), status: SupportStatus.NEW, createdAt: new Date().toISOString() } as SupportRequest]);
+  const verifyCleaner = (id: string) => updateCleanerProfile(id, { status: CleanerStatus.ACTIVE, isListed: true });
+  const rejectCleaner = (id: string) => updateCleanerProfile(id, { status: CleanerStatus.REJECTED });
+  const deleteCleaner = (id: string) => setCleaners(prev => prev.filter(c => c.id !== id));
   const updateSupportStatus = (id: string, status: SupportStatus) => setSupportRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-  const requestPasswordReset = async (email: string) => { /* Mock */ };
+  const requestPasswordReset = async (email: string) => console.log("Reset for", email);
   const updateLead = (leadId: string, data: Partial<Lead>) => setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...data } : l));
   const updateLeadOutcome = (leadId: string, outcome: 'COMPLETED' | 'LOST') => updateLead(leadId, { status: outcome, completedAt: outcome === 'COMPLETED' ? Date.now() : undefined });
-  const searchCleaners = (zip: string, service?: string) => cleaners.filter(c => canCleanerServeZip(c, zip) && (!service || c.services.includes(service)));
+  const searchCleaners = (zip: string) => cleaners.filter(c => c.status === CleanerStatus.ACTIVE && c.isListed);
   const deleteMyAccount = () => { if (authenticatedCleanerId) setCleaners(prev => prev.filter(c => c.id !== authenticatedCleanerId)); logout(); };
 
-  const value: AppContextType = {
-    cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs,
-    userRole, authenticatedCleanerId, isHydrated, isChatOpen, lastEmail,
-    pendingClientCode, pendingClientEmail, pendingClientCodeExpires,
-    setIsChatOpen, clearLastEmail: () => setLastEmail(null), loginCleaner, registerCleaner, logout,
-    createLead, acceptLead, toggleAvailability, sendChatMessage, getRoomForLead, getMessagesForRoom,
-    updateCleanerProfile, verifyCleanerCode, resendCleanerCode, resendClientCode,
-    createSupportRequest, verifyCleaner, rejectCleaner, deleteCleaner, updateSupportStatus,
-    requestPasswordReset, updateLead, updateLeadOutcome, searchCleaners, deleteMyAccount
-  };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={{ 
+      cleaners, leads, chatRooms, chatMessages, supportRequests, teamMembers, auditLogs,
+      userRole, authenticatedCleanerId, isHydrated, isChatOpen, lastEmail,
+      pendingClientCode, pendingClientEmail, pendingClientCodeExpires, SERVICE_UI_MAP_EN,
+      setIsChatOpen, clearLastEmail: () => setLastEmail(null), loginCleaner, registerCleaner, logout,
+      createLead, acceptLead, toggleAvailability, sendChatMessage, getRoomForLead, getMessagesForRoom,
+      updateCleanerProfile, verifyCleanerCode, resendCleanerCode: async () => {}, resendClientCode: async () => {},
+      createSupportRequest, verifyCleaner, rejectCleaner, deleteCleaner, updateSupportStatus,
+      requestPasswordReset, updateLead, updateLeadOutcome, searchCleaners, deleteMyAccount
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
 };
