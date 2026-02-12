@@ -13,52 +13,54 @@ export enum AdminRole {
 }
 
 export enum CleanerStatus {
-  // Onboarding Flow
   CREATED = 'CREATED',
   EMAIL_VERIFIED = 'EMAIL_VERIFIED',
   VERIFICATION_PENDING = 'VERIFICATION_PENDING',
-
-  // Operational Statuses
   ACTIVE = 'ACTIVE',
   LIMITED = 'LIMITED',
   REJECTED = 'REJECTED'
 }
 
-export enum SupportStatus {
-  NEW = 'NEW',
-  IN_PROGRESS = 'IN_PROGRESS',
-  RESOLVED = 'RESOLVED'
+export enum LeadStatus {
+  DRAFT = 'DRAFT',
+  VERIFYING = 'VERIFYING',
+  VERIFIED = 'VERIFIED',
+  MATCHING = 'MATCHING', // New
+  WAVE_1 = 'WAVE_1',
+  WAVE_2 = 'WAVE_2',
+  OPEN = 'OPEN',
+  UNLOCKED = 'UNLOCKED',
+  QUOTED = 'QUOTED',
+  ACCEPTED = 'ACCEPTED',
+  CONFIRMED = 'CONFIRMED', // New
+  COMPLETED = 'COMPLETED',
+  EXPIRED = 'EXPIRED', // New
+  REFUNDED = 'REFUNDED', // New
+  LOST = 'LOST',
+  CANCELLED = 'CANCELLED'
 }
 
+// Added Support Status for Admin tracking
+export enum SupportStatus {
+  NEW = 'NEW',
+  OPEN = 'OPEN',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED'
+}
+
+// Added Support Type for routing
 export enum SupportType {
   CLIENT = 'CLIENT',
   CLEANER = 'CLEANER'
 }
 
-export interface AiVerificationResult {
-  verification_status: "LIKELY_VALID" | "NEEDS_MANUAL_REVIEW" | "LIKELY_FRAUD";
-  confidence_score: number;
-  summary?: string;
-  user_reason_pt?: string;
-  user_instruction_pt?: string;
-}
-
-export interface ChatRoom {
+export interface Quote {
   id: string;
   leadId: string;
-  clientId: string;
   cleanerId: string;
-  createdAt: number;
-}
-
-export interface ChatMessage {
-  id: string;
-  chatRoomId: string;
-  senderRole: 'client' | 'cleaner';
-  messageOriginal: string;
-  languageOriginal: 'en' | 'pt';
-  messageTranslated: string;
-  languageTarget: 'en' | 'pt';
+  price: number;
+  message: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   createdAt: number;
 }
 
@@ -66,26 +68,42 @@ export interface Lead {
   id: string;
   clientName: string;
   clientPhone: string;
-  clientEmail?: string;
+  clientEmail: string;
   zipCode: string;
   serviceType: string;
   bedrooms: number;
   bathrooms: number;
   date: string;
-  status: 'NEW' | 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'UNASSIGNED' | 'LOST' | 'CANCELLED';
+  status: LeadStatus;
+  leadCost: number; // What the pro pays to unlock
+  unlockedBy: string[]; // List of cleaner IDs who paid
   acceptedByCleanerId?: string;
   createdAt: number;
   completedAt?: number;
   broadcastToIds?: string[];
   context?: {
-    viewedPortfolio?: boolean;
-    portfolioCount?: number;
     origin?: 'Express Match' | 'Direct Search';
   };
   estimatedValue?: number;
   internalNotes?: string;
-  review?: { rating: number; comment: string; };
-  history?: { timestamp: number; event: string; note?: string }[];
+}
+
+// Verification result type for Identity checks
+export interface AiVerificationResult {
+  verification_status: 'LIKELY_VALID' | 'NEEDS_MANUAL_REVIEW' | 'LIKELY_FRAUD';
+  confidence_score: number;
+  summary: string;
+  user_reason_pt?: string;
+  user_instruction_pt?: string;
+}
+
+// Point transaction for merit system
+export interface PointTransaction {
+  id: string;
+  amount: number;
+  reason: string;
+  date: string;
+  campaignId?: string;
 }
 
 export interface CleanerProfile {
@@ -95,58 +113,53 @@ export interface CleanerProfile {
   email: string;
   password?: string;
   
-  // Location & Business
+  // Wallet
+  balance: number; // Credits/Dollars available to buy leads
+  
   city: string;
   state: string;
-  address?: string; // Added per schema
+  address?: string;
   companyName: string;
-  isCompany: boolean; // Individual vs LLC
-  ein?: string; // Added per schema (LLC only)
+  isCompany: boolean;
   yearsExperience: number;
   baseZip: string;
   serviceRadius: number;
   zipCodes: string[];
   
-  // Service Details
   services: string[];
   description: string;
   
-  // System Status
   status: CleanerStatus;
   isAvailable: boolean;
   rating: number;
   reviewCount: number;
   joinedDate: string;
   emailVerified: boolean;
-  verificationCode?: string;
-  verificationCodeExpires?: number;
   
-  // Media / Assets
   photoUrl: string;
+  logoUrl?: string; // NOVO CAMPO
   galleryUrls: string[];
   portfolio: PortfolioItem[];
   
-  // Flags
   isListed: boolean;
   profileCompleted: boolean;
   
-  // KYC
   documentFrontUrl?: string;
   documentBackUrl?: string;
   facePhotoUrl?: string;
   selfieWithDocUrl?: string;
-  aiVerificationResult?: AiVerificationResult;
   
-  // Gamification & Billing
-  subscription?: Subscription;
   points: number;
   level: CleanerLevel;
+
+  // Added missing fields for enterprise and merit features
+  ein?: string;
   pointHistory: PointTransaction[];
-  notificationCount?: number;
   notificationSettings?: {
     newLeads: boolean;
     newMessages: boolean;
   };
+  aiVerificationResult?: AiVerificationResult;
 }
 
 export enum CleanerLevel {
@@ -163,18 +176,6 @@ export interface PortfolioItem {
   description?: string;
   createdAt: string;
   status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
-  adminNote?: string;
-}
-
-export interface ClientProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  password?: string;
-  phone: string;
-  emailVerified: boolean;
-  verificationCode?: string;
-  joinedDate: string;
 }
 
 export interface EmailNotification {
@@ -185,17 +186,24 @@ export interface EmailNotification {
   actionText: string;
 }
 
-export interface AuditLog {
+export interface ChatRoom {
   id: string;
-  adminId: string;
-  adminName: string;
-  action: string;
-  targetId?: string;
-  targetType?: 'CLEANER' | 'CLIENT' | 'TEAM_MEMBER';
-  timestamp: string;
-  details: string;
+  leadId: string;
+  clientId: string;
+  cleanerId: string;
+  createdAt: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  chatRoomId: string;
+  senderRole: 'client' | 'cleaner';
+  messageOriginal: string;
+  messageTranslated: string;
+  createdAt: number;
+}
+
+// Support Request type for institutional assistance
 export interface SupportRequest {
   id: string;
   type: SupportType;
@@ -205,35 +213,32 @@ export interface SupportRequest {
   whatsapp?: string;
   message: string;
   status: SupportStatus;
-  createdAt: string;
-  resolvedAt?: string;
+  createdAt: number;
 }
 
+// Team Member type for Governance
 export interface TeamMember {
   id: string;
   fullName: string;
-  email: string;
   role: AdminRole;
-  status: 'ACTIVE' | 'SUSPENDED';
-  lastLogin?: string;
-  permissions: any;
 }
 
-export enum PaymentMethodType {
-  CREDIT_CARD = 'CREDIT_CARD',
-  PIX = 'PIX',
-  STRIPE = 'STRIPE'
-}
-
+// Payment and Subscription types for Pro plans
 export enum SubscriptionPlan {
   PROMO_STARTUP = 'PROMO_STARTUP',
   STANDARD_PRO = 'STANDARD_PRO'
 }
 
+export enum PaymentMethodType {
+  STRIPE = 'STRIPE',
+  PIX = 'PIX',
+  CREDIT_CARD = 'CREDIT_CARD'
+}
+
 export enum DiscountType {
-  FULL_EXEMPTION = 'FULL_EXEMPTION',
+  PERCENTAGE = 'PERCENTAGE',
   FIXED_AMOUNT = 'FIXED_AMOUNT',
-  PERCENTAGE = 'PERCENTAGE'
+  FULL_EXEMPTION = 'FULL_EXEMPTION'
 }
 
 export interface Discount {
@@ -251,13 +256,9 @@ export interface Subscription {
   paymentMethod: PaymentMethodType;
   lastPaymentAmount: number;
   activeDiscount?: Discount;
-  billingHistory: any[];
-}
-
-export interface PointTransaction {
-  id: string;
-  amount: number;
-  reason: string;
-  date: string;
-  campaignId?: string;
+  billingHistory: {
+    date: string;
+    amount: number;
+    status: 'PAID' | 'EXEMPTED' | 'FAILED';
+  }[];
 }

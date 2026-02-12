@@ -1,17 +1,13 @@
 
+import { Lead, CleanerProfile, LeadStatus, CleanerStatus } from '../types';
+
 /**
  * Mock Storage Service
  * ---------------------
- * This service simulates uploading a file to a cloud storage provider (like Supabase Storage or S3).
- * It accepts a base64 string, converts it to a Blob, and returns a local object URL.
- * This architectural change is critical to prevent storing large data payloads in localStorage.
+ * Authority: Data Persistence Layer.
+ * Rule: This layer MUST NOT decide status transitions.
  */
 
-/**
- * Converts a base64 string to a Blob object.
- * @param base64 - The base64 string (e.g., from a canvas or file reader).
- * @returns A Blob object.
- */
 function base64ToBlob(base64: string): Blob {
   const parts = base64.split(';base64,');
   const contentType = parts[0].split(':')[1];
@@ -26,15 +22,8 @@ function base64ToBlob(base64: string): Blob {
   return new Blob([uInt8Array], { type: contentType });
 }
 
-/**
- * Simulates uploading a document and returns a URL.
- * In a real application, this would use a client library like `@supabase/storage-js`.
- * @param base64Data - The base64 encoded image data.
- * @returns A promise that resolves with a local blob URL representing the "uploaded" file.
- */
 export const uploadDocument = (base64Data: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    // Simulate network delay
     setTimeout(() => {
       try {
         if (!base64Data) {
@@ -42,24 +31,74 @@ export const uploadDocument = (base64Data: string): Promise<string> => {
         }
         const blob = base64ToBlob(base64Data);
         const url = URL.createObjectURL(blob);
-        console.log(`[StorageService] Mock Upload Success. Blob URL: ${url}`);
         resolve(url);
       } catch (error) {
-        console.error("[StorageService] Mock Upload Failed:", error);
         reject(new Error("File processing failed. Please try again."));
       }
-    }, 1200); // 1.2 second simulated delay
+    }, 1200);
   });
 };
 
-/**
- * Cleans up blob URLs to prevent memory leaks.
- * This should be called when the component unmounts or the URL is no longer needed.
- * @param url - The blob URL to revoke.
- */
 export const cleanupStorageUrl = (url: string) => {
     if (url.startsWith('blob:')) {
         URL.revokeObjectURL(url);
-        console.log(`[StorageService] Revoked Blob URL: ${url}`);
     }
+};
+
+const getItems = (key: string) => {
+  const stored = localStorage.getItem(key);
+  return stored ? JSON.parse(stored) : [];
+};
+
+const setItems = (key: string, items: any[]) => {
+  localStorage.setItem(key, JSON.stringify(items));
+};
+
+export const storageService = {
+  getLead: async (id: string): Promise<Lead | undefined> => {
+    const leads = getItems('bc_leads');
+    return leads.find((l: Lead) => l.id === id);
+  },
+  
+  updateLead: async (lead: Lead): Promise<void> => {
+    const leads = getItems('bc_leads');
+    const index = leads.findIndex((l: Lead) => l.id === lead.id);
+    if (index !== -1) {
+      leads[index] = lead;
+    } else {
+      leads.push(lead);
+    }
+    setItems('bc_leads', leads);
+    window.dispatchEvent(new CustomEvent('bc_storage_update', { detail: { type: 'leads' } }));
+  },
+
+  // Authority Fix: This function ONLY handles ID assignment now.
+  markUnlocked: async (leadId: string, proId: string): Promise<void> => {
+    const lead = await storageService.getLead(leadId);
+    if (lead && !lead.unlockedBy.includes(proId)) {
+      lead.unlockedBy.push(proId);
+      await storageService.updateLead(lead);
+    }
+  },
+
+  getUnlockCount: async (leadId: string): Promise<number> => {
+    const lead = await storageService.getLead(leadId);
+    return lead ? lead.unlockedBy.length : 0;
+  },
+
+  getActivePros: async (): Promise<CleanerProfile[]> => {
+    const cleaners = getItems('bc_cleaners');
+    return cleaners.filter((c: CleanerProfile) => c.status === CleanerStatus.ACTIVE && c.isAvailable);
+  },
+
+  notifyPros: async (leadId: string, pros: CleanerProfile[]): Promise<void> => {
+    const lead = await storageService.getLead(leadId);
+    if (!lead) return;
+    
+    const existingBroadCast = lead.broadcastToIds || [];
+    const newIds = pros.map(p => p.id);
+    lead.broadcastToIds = Array.from(new Set([...existingBroadCast, ...newIds]));
+    
+    await storageService.updateLead(lead);
+  }
 };

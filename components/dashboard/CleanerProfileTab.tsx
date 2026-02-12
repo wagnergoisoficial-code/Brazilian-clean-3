@@ -74,14 +74,22 @@ const CleanerProfileTab: React.FC<{ profile: CleanerProfile }> = ({ profile }) =
     
     return (
         <div className="space-y-8 animate-fade-in">
-            {/* Header */}
-            <div className="flex items-center gap-6 p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-                <img src={profile.photoUrl || `https://ui-avatars.com/api/?name=${profile.fullName}&background=0D8ABC&color=fff`} alt="Profile" className="w-20 h-20 rounded-full object-cover shadow-md" />
-                <div>
-                    <h3 className="text-2xl font-black">{profile.fullName}</h3>
-                    <p className="text-sm text-slate-500 font-medium">{profile.email}</p>
-                    <div className="mt-3"><ProfileStatusBadge status={profile.status} /></div>
+            {/* Header com Foto de Perfil e Logo */}
+            <div className="flex items-center justify-between p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex items-center gap-6">
+                    <div className="relative">
+                        <img src={profile.photoUrl || `https://ui-avatars.com/api/?name=${profile.fullName}&background=0D8ABC&color=fff`} alt="Profile" className="w-20 h-20 rounded-full object-cover shadow-md border-2 border-white" />
+                        {profile.logoUrl && (
+                            <img src={profile.logoUrl} alt="Logo" className="w-10 h-10 rounded-full object-cover absolute -bottom-1 -right-1 border-2 border-white shadow-lg" title="Empresa" />
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-black">{profile.fullName}</h3>
+                        <p className="text-sm text-slate-500 font-medium">{profile.companyName || profile.email}</p>
+                        <div className="mt-3"><ProfileStatusBadge status={profile.status} /></div>
+                    </div>
                 </div>
+                <button onClick={() => navigate(`/setup-business?id=${profile.id}`)} className="text-xs font-black uppercase text-blue-600 hover:underline">Atualizar Logo/Dados</button>
             </div>
 
             {/* Business Details Section */}

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import { uploadDocument } from '../services/storageService';
 
 const CleanerBusinessConfig: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -11,6 +12,7 @@ const CleanerBusinessConfig: React.FC = () => {
 
   const myProfile = cleaners.find(c => c.id === cleanerId);
 
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
     isCompany: false, 
@@ -18,7 +20,8 @@ const CleanerBusinessConfig: React.FC = () => {
     address: '',
     yearsExperience: 2,
     city: '',
-    state: ''
+    state: '',
+    logoUrl: ''
   });
 
   useEffect(() => {
@@ -31,12 +34,35 @@ const CleanerBusinessConfig: React.FC = () => {
             address: myProfile.address || '',
             yearsExperience: myProfile.yearsExperience || 2,
             city: myProfile.city || '',
-            state: myProfile.state || ''
+            state: myProfile.state || '',
+            logoUrl: myProfile.logoUrl || ''
         }));
     } else {
         navigate('/professional');
     }
   }, [myProfile, navigate]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsUploading(true);
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result as string;
+          const url = await uploadDocument(base64);
+          setFormData(prev => ({ ...prev, logoUrl: url }));
+        } catch (err) {
+          alert("Falha no upload da logo. Tente novamente.");
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +90,8 @@ const CleanerBusinessConfig: React.FC = () => {
         address: formData.address,
         yearsExperience: formData.yearsExperience,
         city: formData.city,
-        state: formData.state
+        state: formData.state,
+        logoUrl: formData.logoUrl
     });
 
     navigate(`/setup-services?id=${cleanerId}`);
@@ -86,6 +113,37 @@ const CleanerBusinessConfig: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
           
+          {/* LOGO UPLOAD SECTION */}
+          <div className="flex flex-col items-center justify-center pb-8 border-b border-slate-100">
+              <label className="block text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Logo da Empresa / Profissional</label>
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center transition-all group-hover:border-blue-100 group-hover:scale-105">
+                    {formData.logoUrl ? (
+                        <img src={formData.logoUrl} className="w-full h-full object-cover" alt="Logo" />
+                    ) : (
+                        <div className="text-center p-4">
+                            <span className="text-3xl">🏢</span>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Nenhuma Logo</p>
+                        </div>
+                    )}
+                    
+                    {isUploading && (
+                        <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
+                            <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                    )}
+                </div>
+                <label className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-xl cursor-pointer hover:bg-blue-700 transition active:scale-90 border-2 border-white">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploading} />
+                </label>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-widest">Recomendado: Logo quadrada ou circular (.png, .jpg)</p>
+          </div>
+
           <div className="space-y-4">
               <label className="block text-xs font-black uppercase text-slate-400 tracking-widest">Tipo de Operação</label>
               <div className="grid grid-cols-2 gap-4">

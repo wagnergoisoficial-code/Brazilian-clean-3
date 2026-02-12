@@ -11,12 +11,23 @@ interface State {
   error: Error | null;
 }
 
-// Explicitly extend React.Component to ensure the 'props' property is inherited and recognized correctly by the compiler.
+/**
+ * SystemGuardian Class Component
+ * ------------------------------
+ * Acts as a Top-Level Error Boundary to protect the application runtime.
+ */
 class SystemGuardian extends React.Component<SystemGuardianProps, State> {
+  // Fix: Explicitly declare the state property to ensure TS recognizes it within the class scope.
+  // This resolves errors where 'state' was reported as non-existent on the type.
   state: State = {
     hasError: false,
     error: null,
   };
+
+  constructor(props: SystemGuardianProps) {
+    super(props);
+    // Removed redundant this.props = props; assignment as super(props) handles this.
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -38,8 +49,8 @@ class SystemGuardian extends React.Component<SystemGuardianProps, State> {
   };
 
   render(): ReactNode {
+    // Fix: Access state and props via standard class members.
     const { hasError, error } = this.state;
-    // Accessing 'children' through this.props, which is inherited from React.Component.
     const { children } = this.props;
 
     if (hasError) {
